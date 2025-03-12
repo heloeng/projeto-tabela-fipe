@@ -15,4 +15,4 @@ def insert_user(name, email, role):
     print(f"Usuário {name} inserido com sucesso!")
 
 if __name__ == "__main__":
-    insert_user("Paulo Souza", "paulo@email.com", "pesquisador")
+    insert_user("Heloiza Mendes", "heloiza@email.com", "pesquisador")
