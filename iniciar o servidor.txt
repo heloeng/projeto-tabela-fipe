@@ -1,1 +1,0 @@
-uvicorn api_stores:app --reload
