@@ -2,33 +2,17 @@ import streamlit as st
 import requests
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
+import os
 
-#Grande bloco para configurar funcionalidade de autenticacao:
-#--------INICIO_BLOCO_DE_AUTENTICACAO-----------
 # Configurações do Google OAuth
-SCOPES = ["https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email", "openid"]
-REDIRECT_URI = "http://localhost:8501"  # Para testes locais
+SCOPES = ["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"]
+REDIRECT_URI = "http://localhost:8501"
+CLIENT_SECRETS_FILE = "client_secret.json"
 
-# Função para configurar o Flow dinamicamente com st.secrets
-def create_flow(state=None):
-    try:
-        google_secrets = st.secrets["google_oauth"]
-        st.write("Debug: Secrets carregados com sucesso")
-        client_config = {
-            "web": {
-                "client_id": google_secrets["client_id"],
-                "project_id": google_secrets["project_id"],
-                "auth_uri": google_secrets["auth_uri"],
-                "token_uri": google_secrets["token_uri"],
-                "auth_provider_x509_cert_url": google_secrets["auth_provider_x509_cert_url"],
-                "client_secret": google_secrets["client_secret"],
-                "redirect_uris": google_secrets["redirect_uris"]
-            }
-        }
-        return Flow.from_client_config(client_config, scopes=SCOPES, redirect_uri=REDIRECT_URI, state=state)
-    except Exception as e:
-        st.error(f"Erro ao criar Flow: {str(e)}")
-        return None
+# Verifica se o arquivo client_secret.json existe
+if not os.path.exists(CLIENT_SECRETS_FILE):
+    st.error(f"Arquivo {CLIENT_SECRETS_FILE} não encontrado. Por favor, coloque-o no diretório do projeto.")
+    st.stop()
 
 # Gerenciamento de credenciais no session_state
 def get_credentials():
@@ -38,76 +22,80 @@ def get_credentials():
 
 def set_credentials(credentials):
     st.session_state["credentials"] = credentials
-    st.write("Debug: Credenciais definidas")
 
 # Fluxo de autenticação
 def authenticate():
-    flow = create_flow()
-    if flow:
-        authorization_url, state = flow.authorization_url(
-            access_type="offline",
-            include_granted_scopes="true"
-        )
-        st.session_state["oauth_state"] = state
-        st.write(f"Debug: State salvo: {state}")
-        st.write(f"Debug: Redirecionando para {authorization_url}")
-        st.write(f'<meta http-equiv="refresh" content="0;url={authorization_url}">', unsafe_allow_html=True)
+    if not get_credentials():
+        try:
+            flow = Flow.from_client_secrets_file(
+                CLIENT_SECRETS_FILE,
+                scopes=SCOPES,
+                redirect_uri=REDIRECT_URI
+            )
+            authorization_url, state = flow.authorization_url(
+                access_type="offline",
+                include_granted_scopes="true",
+                prompt="consent"
+            )
+            st.session_state["state"] = state
+            st.write("Redirecionando para o login do Google...")
+            st.write(
+                f'<meta http-equiv="refresh" content="1;url={authorization_url}">',
+                unsafe_allow_html=True
+            )
+        except Exception as e:
+            st.error(f"Erro ao iniciar autenticação: {str(e)}")
 
 # Processa o callback do OAuth
 def process_callback():
-    st.write("Debug: Iniciando process_callback")
     if "code" not in st.query_params:
-        st.write("Debug: Nenhum code na URL")
         return False
     
     state_from_url = st.query_params.get("state")
-    stored_state = st.session_state.get("oauth_state")
-    st.write(f"Debug: State da URL: {state_from_url}, State armazenado: {stored_state}")
+    stored_state = st.session_state.get("state")
     
-    if not stored_state or state_from_url != stored_state:
-        st.error("Estado inválido. Tente fazer login novamente.")
-        st.session_state.pop("oauth_state", None)
+    if not stored_state:
+        st.warning("State não encontrado. Usando state da URL como fallback.")
+        stored_state = state_from_url
+        st.session_state["state"] = stored_state
+    
+    if state_from_url != stored_state:
+        st.error("Estado inválido ou ausente. Tente fazer login novamente.")
+        st.session_state.pop("state", None)
         return False
     
     try:
-        flow = create_flow(state=stored_state)
-        if flow:
-            flow.fetch_token(code=st.query_params["code"])
-            credentials = flow.credentials
-            st.write(f"Debug: Token obtido: {credentials.token}")
-            set_credentials(credentials)
-            st.session_state.pop("oauth_state", None)
-            st.query_params.clear()
-            st.rerun()
-            return True
+        flow = Flow.from_client_secrets_file(
+            CLIENT_SECRETS_FILE,
+            scopes=SCOPES,
+            redirect_uri=REDIRECT_URI,
+            state=stored_state
+        )
+        flow.fetch_token(code=st.query_params["code"])
+        credentials = flow.credentials
+        set_credentials(credentials)
+        st.session_state.pop("state", None)
+        st.query_params.clear()
+        st.rerun()
+        return True
     except Exception as e:
-        st.error(f"Erro ao autenticar: {str(e)}")
-        st.session_state.pop("oauth_state", None)
+        st.error(f"Erro ao processar o callback: {str(e)}")
+        st.session_state.pop("state", None)
         return False
-    return False
 
 # Obtém informações do usuário autenticado
 def get_user_info(credentials):
-    st.write("Debug: Entrando em get_user_info")
     if not credentials:
-        st.write("Debug: Credenciais ausentes")
         return None
-    
-    st.write(f"Debug: Token de acesso: {credentials.token}")
-    st.write(f"Debug: Token expirado? {credentials.expired}")
     
     try:
         headers = {"Authorization": f"Bearer {credentials.token}"}
         response = requests.get("https://www.googleapis.com/oauth2/v3/userinfo", headers=headers)
         response.raise_for_status()
-        user_info = response.json()
-        st.write(f"Debug: Resposta da API: {user_info}")
-        return user_info
+        return response.json()
     except requests.RequestException as e:
         st.error(f"Erro ao obter informações do usuário: {str(e)}")
-        st.write(f"Debug: Status da resposta: {e.response.status_code if e.response else 'N/A'}")
         return None
-#--------FIM_BLOCO_DE_AUTENTICACAO-----------
 
 # Dados das marcas e modelos
 veiculos = {
@@ -120,15 +108,12 @@ veiculos = {
 # Armazenar os preços registrados pelos pesquisadores e as lojas associadas
 if 'precos_registrados' not in st.session_state:
     st.session_state.precos_registrados = {}
-
 if 'pesquisadores_lojas' not in st.session_state:
     st.session_state.pesquisadores_lojas = {}
-
 if 'gestores_associacoes' not in st.session_state:
     st.session_state.gestores_associacoes = {}
 
 # Processa o callback no início do script
-st.write("Debug: Início do script")
 if "code" in st.query_params:
     process_callback()
 
@@ -136,18 +121,17 @@ if "code" in st.query_params:
 st.sidebar.title("Menu")
 page = st.sidebar.radio("Navegação", ["Tela Inicial"], key="navegacao_radio")
 
-# Botão de login
+# Autenticação na sidebar
 st.sidebar.header("Acesso para colaboradores")
 credentials = get_credentials()
-st.write(f"Debug: Credenciais no início da sidebar: {credentials.token if credentials else 'None'}")
 
 if credentials and not credentials.expired:
     user_info = get_user_info(credentials)
     if user_info:
         st.sidebar.write(f"Bem-vindo(a), {user_info['name']} ({user_info['email']})")
         if st.sidebar.button("Logout"):
-            set_credentials(None)
-            st.session_state.pop("oauth_state", None)
+            st.session_state["credentials"] = None
+            st.session_state.pop("state", None)
             st.rerun()
     else:
         st.sidebar.error("Erro ao carregar informações do usuário.")
@@ -171,14 +155,12 @@ if page == "Tela Inicial":
     
     # Botão de pesquisa
     if st.button("Pesquisar"):
-        # Exibir o preço médio se houverem preços registrados
         if chave_veiculo in st.session_state.precos_registrados:
             lojas_precos = st.session_state.precos_registrados[chave_veiculo]
-            total_preco = sum([preco for loja, precos in lojas_precos.items() for preco in precos])  # Soma de todos os preços
-            total_registros = sum([len(precos) for loja, precos in lojas_precos.items()])  # Total de registros
-            
+            total_preco = sum(preco for loja, precos in lojas_precos.items() for preco in precos)
+            total_registros = sum(len(precos) for loja, precos in lojas_precos.items())
             if total_registros > 0:
-                preco_medio = total_preco / total_registros  # Preço médio
+                preco_medio = total_preco / total_registros
                 st.write(f"**Preço Médio do {chave_veiculo}:** R$ {preco_medio:.2f}")
             else:
                 st.write("**Nenhum preço registrado para este veículo ainda.**")
