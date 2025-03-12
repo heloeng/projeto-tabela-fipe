@@ -1,10 +1,9 @@
 from db_connection import create_connection
 
-def create_table_usuarios():
+def create_users_table():
     conn = create_connection()
     cursor = conn.cursor()
     
-    # Criar o tipo ENUM para o papel do usuário
     cursor.execute("""
         DO $$ 
         BEGIN
@@ -14,11 +13,10 @@ def create_table_usuarios():
         END $$;
     """)
 
-    # Criar a tabela de usuários
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id_usuario SERIAL PRIMARY KEY,
-            nome TEXT NOT NULL,
+        CREATE TABLE IF NOT EXISTS users_table (
+            id_user SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL,
             role user_role NOT NULL
         );
@@ -27,7 +25,7 @@ def create_table_usuarios():
     conn.commit()
     cursor.close()
     conn.close()
-    print("Tabela `users` criada com sucesso!")
+    print("✅ Tabela `users_table` criada com sucesso!")
 
 if __name__ == "__main__":
-    create_table_usuarios()
+    create_users_table()
