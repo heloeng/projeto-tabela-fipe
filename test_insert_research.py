@@ -16,7 +16,7 @@ def insert_research(assigned_date, completion_date, user_id, store_id):
 
 if __name__ == "__main__":
     #  Atribuir o pesquisador "Paulo Souza" (id_user=1) à "Loja Centro" (id_store=1)
-    insert_research("2024-03-12", None, 1, 1)
+    insert_research("2024-03-12", None, 4, 7)
 
     #  Atribuir a pesquisadora "Heloiza Mendes" (id_user=3) à Loja 2
-    insert_research("2024-03-13", None, 3, 2)
+    insert_research("2024-03-13", None, 1, 8)
