@@ -25,7 +25,7 @@ def create_users_table():
     conn.commit()
     cursor.close()
     conn.close()
-    print("✅ Tabela `users_table` criada com sucesso!")
+    print("Tabela `users_table` criada com sucesso!")
 
 if __name__ == "__main__":
     create_users_table()
