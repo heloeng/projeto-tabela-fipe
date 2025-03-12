@@ -17,11 +17,11 @@ def insert_store(name, city, state, street, neighborhood, number, zip_code):
 
 if __name__ == "__main__":
     insert_store(
-        "Loja Centro 1",
-        "Rio de Janeiro",
-        "RJ",
-        "Avenida Atlântica",
-        "Copacabana",
-        "13",
-        "01234-000"
+       "Loja Centro ",
+        "São Paulo",
+        "SP",
+        "Avenida Paulista",
+        "São Paulo",
+        "1334",
+        "01234-100"
     )
