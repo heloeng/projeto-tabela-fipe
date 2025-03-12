@@ -6,7 +6,8 @@ def insert_user(name, email, role):
     
     cursor.execute("""
         INSERT INTO users_table (name, email, role) 
-        VALUES (%s, %s, %s);
+        VALUES (%s, %s, %s)
+        ON CONFLICT DO NOTHING;
     """, (name, email, role))
     
     conn.commit()
@@ -16,3 +17,4 @@ def insert_user(name, email, role):
 
 if __name__ == "__main__":
     insert_user("Heloiza Mendes", "heloiza@email.com", "pesquisador")
+    insert_user("Vitor Trevisan", "vitortnocente@gmail.com", "pesquisador")

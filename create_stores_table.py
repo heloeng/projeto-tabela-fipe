@@ -7,7 +7,7 @@ def create_stores_table():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS stores_table (
             id_store SERIAL PRIMARY KEY,
-            name TEXT NOT NULL,
+            name TEXT UNIQUE NOT NULL,
             city TEXT NOT NULL,
             state TEXT NOT NULL,
             street TEXT,

@@ -6,7 +6,8 @@ def insert_store(name, city, state, street, neighborhood, number, zip_code):
     
     cursor.execute("""
         INSERT INTO stores_table (name, city, state, street, neighborhood, number, zip_code) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s);
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT DO NOTHING;
     """, (name, city, state, street, neighborhood, number, zip_code))
     
     conn.commit()

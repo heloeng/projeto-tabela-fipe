@@ -4,6 +4,7 @@ from create_research_table import create_research_table
 from create_brands_table import create_brands_table
 from create_models_table import create_models_table
 from create_vehicles_table import create_vehicles_table
+from create_register_table import create_register_table
 
 
 def main():
@@ -16,6 +17,7 @@ def main():
     create_brands_table()
     create_models_table()
     create_vehicles_table()
+    create_register_table()
 
     print("Todas as tabelas foram verificadas e criadas se necessário!")
 
