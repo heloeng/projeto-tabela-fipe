@@ -1,5 +1,5 @@
 import streamlit as st
-from create_stores_table import insert_store, get_stores
+from databases.create_stores_table import insert_store, get_stores
 
 #  Título da Aplicação
 st.title("Gerenciamento de Lojas")
