@@ -3,7 +3,7 @@ import requests
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 import os
-from db_connection import create_connection
+from databases.db_connection import create_connection
 import psycopg2
 from datetime import datetime
 
@@ -17,7 +17,7 @@ def get_lojas():
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT id, name, street, number, neighborhood, city, state, cep 
+    SELECT id_store, name, street, number, neighborhood, city, state, zip_code 
     FROM stores_table
     """)
     lojas = cursor.fetchall()
@@ -147,7 +147,7 @@ if 'lojas_registradas' not in st.session_state:
 
 #------INICIO BLOCO DE AUTENTICAÇÃO-----
 
-# Verifica se o arquivo client_secret.json existe
+# Verifica se o arquivo de credenciais do Google existe
 if not os.path.exists(CLIENT_SECRETS_FILE):
     st.error(f"Arquivo {CLIENT_SECRETS_FILE} não encontrado. Por favor, coloque-o no diretório do projeto.")
     st.stop()
@@ -161,7 +161,7 @@ def get_credentials():
 def set_credentials(credentials):
     st.session_state["credentials"] = credentials
 
-# Fluxo de autenticação
+# Inicia o fluxo de autenticação com Google OAuth
 def authenticate():
     if not get_credentials():
         try:
@@ -184,21 +184,7 @@ def authenticate():
         except Exception as e:
             st.error(f"Erro ao iniciar autenticação: {str(e)}")
 
-    
-# Consulta o role do usuário na tabela users_table usando db_connection
-def get_user_role(email):
-    try:
-        conn = db_connection.create_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT role FROM users_table WHERE email = %s", (email,))
-        result = cursor.fetchone()
-        conn.close()
-        return result[0] if result else None
-    except Exception as e:
-        st.error(f"Erro ao consultar o banco de dados: {str(e)}")
-        return None
-
-# Processa o callback do OAuth
+# Processa o callback do OAuth e redireciona com base no role
 def process_callback():
     if "code" not in st.query_params:
         return False
@@ -206,12 +192,7 @@ def process_callback():
     state_from_url = st.query_params.get("state")
     stored_state = st.session_state.get("state")
     
-    if not stored_state:
-        st.warning("State não encontrado. Usando state da URL como fallback.")
-        stored_state = state_from_url
-        st.session_state["state"] = stored_state
-    
-    if state_from_url != stored_state:
+    if not stored_state or state_from_url != stored_state:
         st.error("Estado inválido ou ausente. Tente fazer login novamente.")
         st.session_state.pop("state", None)
         return False
@@ -227,19 +208,33 @@ def process_callback():
         credentials = flow.credentials
         set_credentials(credentials)
         st.session_state.pop("state", None)
-        st.query_params.clear()
-        st.rerun()
-        return True
+        
+        # Obter informações do usuário
+        user_info = get_user_info(credentials)
+        if user_info:
+            email = user_info["email"]
+            role = get_user_role(email)
+            if role == "pesquisador":
+                st.query_params["page"] = "tela_pesquisador"
+            elif role == "pesquisador":
+                st.query_params["page"] = "tela_gestor"
+            else:
+                st.error("Usuário não autorizado ou role inválido.")
+                st.query_params["page"] = "tela_inicial"
+            st.rerun()
+            return True
+        else:
+            st.error("Erro ao obter informações do usuário.")
+            st.query_params["page"] = "tela_inicial"
+            return False
     except Exception as e:
         st.error(f"Erro ao processar o callback: {str(e)}")
-        st.session_state.pop("state", None)
         return False
 
 # Obtém informações do usuário autenticado
 def get_user_info(credentials):
     if not credentials:
         return None
-    
     try:
         headers = {"Authorization": f"Bearer {credentials.token}"}
         response = requests.get("https://www.googleapis.com/oauth2/v3/userinfo", headers=headers)
@@ -247,6 +242,19 @@ def get_user_info(credentials):
         return response.json()
     except requests.RequestException as e:
         st.error(f"Erro ao obter informações do usuário: {str(e)}")
+        return None
+
+# Consulta o role do usuário na tabela users_table usando db_connection
+def get_user_role(email):
+    try:
+        conn = databases.db_connection.create_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT role FROM users_table WHERE email = %s", (email,))
+        result = cursor.fetchone()
+        conn.close()
+        return result[0] if result else None
+    except Exception as e:
+        st.error(f"Erro ao consultar o banco de dados: {str(e)}")
         return None
     
 #------FIM BLOCO DE AUTENTICAÇÃO-----
