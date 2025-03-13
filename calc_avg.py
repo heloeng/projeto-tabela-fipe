@@ -1,6 +1,6 @@
 import psycopg2
 from datetime import datetime, timedelta
-from db_connection import create_connection
+from databases.db_connection import create_connection
 
 def update_avg_price():
     # Configuração da conexão com o banco de dados

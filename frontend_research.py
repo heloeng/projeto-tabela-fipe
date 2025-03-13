@@ -1,5 +1,5 @@
 import streamlit as st
-from create_research_table import insert_research, get_research
+from databases.create_research_table import insert_research, get_research
 
 st.title("Gerenciamento de Pesquisas")
 

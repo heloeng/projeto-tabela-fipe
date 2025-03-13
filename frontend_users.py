@@ -1,5 +1,5 @@
 import streamlit as st
-from create_users_table import insert_user, get_users
+from databases.create_users_table import insert_user, get_users
 
 st.title("Gerenciamento de Usuários")
 
