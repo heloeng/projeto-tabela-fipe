@@ -116,7 +116,7 @@ def get_pesquisadores():
     conn = create_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT name, email FROM researchers_table")
+    cursor.execute("SELECT name, email FROM users_table")
     pesquisadores = cursor.fetchall()
     
     cursor.close()
@@ -130,7 +130,7 @@ def insert_pesquisador(name, email):
     cursor = conn.cursor()
     
     cursor.execute("""
-        INSERT INTO researchers_table (name, email) 
+        INSERT INTO users_table (name, email) 
         VALUES (%s, %s)
         ON CONFLICT (email) DO NOTHING
     """, (name, email))
