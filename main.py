@@ -8,7 +8,6 @@ from databases.create_stores_table import create_stores_table
 
 def main():
     print("Verificando e criando tabelas no banco de dados...")
-
     
     create_users_table()
     create_stores_table()

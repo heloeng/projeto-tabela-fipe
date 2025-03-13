@@ -3,7 +3,7 @@ import requests
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 import os
-from db_connection import create_connection
+from databases.db_connection import create_connection
 import psycopg2
 from datetime import datetime
 

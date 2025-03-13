@@ -1,5 +1,5 @@
 import streamlit as st
-from db_connection import create_connection
+from databases.db_connection import create_connection
 import psycopg2
 from datetime import datetime
 
