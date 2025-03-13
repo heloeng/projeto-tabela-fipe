@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from databases.db_connection import create_connection
+from db_connection import create_connection
 from datetime import datetime
 
 # Função para recuperar as marcas do banco de dados
@@ -28,7 +28,6 @@ def get_models_by_brand(brand_name):
     """, (brand_name,))
     
     models = cursor.fetchall()
-    
     cursor.close()
     conn.close()
     
@@ -214,6 +213,8 @@ if page == "Tela Inicial":
         else:
             st.warning("Por favor, selecione uma marca, um modelo e um ano/modelo.")
 
+
+# Área do Gestor
 elif page == "Área do Gestor":
     st.title("Área do Gestor")
     
@@ -221,86 +222,12 @@ elif page == "Área do Gestor":
     st.subheader("Cadastrar Pesquisador")
     nome_pesquisador = st.text_input("Nome do Pesquisador", key="nome_pesquisador")
     email_pesquisador = st.text_input("E-mail do Pesquisador", key="email_pesquisador")
-    
+     
+    # Exibindo o botão de cadastro
     if st.button("Cadastrar Pesquisador"):
-        if nome_pesquisador and email_pesquisador:
-            if email_pesquisador not in [pesquisador[1] for pesquisador in st.session_state.pesquisadores]:
-                insert_pesquisador(nome_pesquisador, email_pesquisador)
-                st.session_state.pesquisadores.append((nome_pesquisador, email_pesquisador))
-                st.success(f"Pesquisador {nome_pesquisador} cadastrado com sucesso!")
-            else:
-                st.error(f"Pesquisador com e-mail {email_pesquisador} já cadastrado.")
-        else:
-            st.error("Por favor, insira o nome e e-mail válidos para o pesquisador.")
-    
-    # Exibir lista de pesquisadores cadastrados
-    st.subheader("Pesquisadores Cadastrados")
-    if st.session_state.pesquisadores:
-        for pesquisador in st.session_state.pesquisadores:
-            st.write(f"{pesquisador[0]} - {pesquisador[1]}")
-    else:
-        st.write("Nenhum pesquisador cadastrado.")
-
-        # Função para adicionar um novo gestor
-def insert_gestor(name, email):
-    conn = create_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        INSERT INTO users_table (name, email, role) 
-        VALUES (%s, %s, 'Gestor')
-        ON CONFLICT (email) DO NOTHING
-    """, (name, email))
-    
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-# Função para adicionar gestor ao banco de dados
-def insert_gestor(name, email):
-    conn = create_connection()
-    cursor = conn.cursor()
-    
-    role = 'gestor'  # Papel do gestor
-    
-    cursor.execute("""
-        INSERT INTO users_table (name, email, role)
-        VALUES (%s, %s, %s)
-        ON CONFLICT (email) DO NOTHING
-    """, (name, email, role))
-    
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-# Inicializar a lista de gestores no session_state, se ainda não existir
-if 'gestores' not in st.session_state:
-    st.session_state.gestores = []
-
-# Cadastro de Gestor
-st.subheader("Cadastrar Gestor")
-nome_gestor = st.text_input("Nome do Gestor", key="nome_gestor")
-email_gestor = st.text_input("E-mail do Gestor", key="email_gestor")
-
-if st.button("Cadastrar Gestor"):
-    if nome_gestor and email_gestor:
-        # Verificar se o e-mail já está na lista de gestores cadastrados
-        if email_gestor not in [gestor[1] for gestor in st.session_state.gestores]:
-            insert_gestor(nome_gestor, email_gestor)
-            st.session_state.gestores.append((nome_gestor, email_gestor))  # Adiciona o novo gestor à lista
-            st.success(f"Gestor {nome_gestor} cadastrado com sucesso!")
-        else:
-            st.error(f"Gestor com e-mail {email_gestor} já cadastrado.")
-    else:
-        st.error("Por favor, insira o nome e e-mail válidos para o gestor.")
-
-# Exibir lista de gestores cadastrados
-st.subheader("Gestores Cadastrados")
-if st.session_state.gestores:
-    for gestor in st.session_state.gestores:
-        st.write(f"{gestor[0]} - {gestor[1]}")
-else:
-    st.write("Nenhum gestor cadastrado.")
+        insert_pesquisador(nome_pesquisador, email_pesquisador)
+        st.session_state.pesquisadores.append((nome_pesquisador, email_pesquisador))
+        st.write(f"Pesquisador {nome_pesquisador} ({email_pesquisador}) cadastrado com sucesso.")
     
     # Cadastro de Loja
     st.subheader("Cadastrar Loja")
@@ -309,21 +236,42 @@ else:
     bairro_loja = st.text_input("Bairro", key="bairro_loja")
     numero_loja = st.text_input("Número", key="numero_loja")
     cidade_loja = st.text_input("Cidade", key="cidade_loja")
-    estado_loja = st.selectbox("Estado", ["Escolha um estado"] + list(estados_dict.keys()), key="estado_loja")
+    estado_loja = st.selectbox("Estado", estados_dict.keys(), key="estado_loja")
     cep_loja = st.text_input("CEP", key="cep_loja")
 
+    # Exibindo o botão de cadastro
     if st.button("Cadastrar Loja"):
-        if nome_loja and rua_loja and bairro_loja and numero_loja and cidade_loja and estado_loja != "Escolha um estado" and cep_loja:
-            insert_loja(nome_loja, rua_loja, bairro_loja, numero_loja, cidade_loja, estado_loja, cep_loja)
-            st.session_state.lojas_registradas.append(nome_loja)
-            st.success(f"Loja {nome_loja} cadastrada com sucesso!")
-        else:
-            st.error("Por favor, insira todos os dados da loja.")
+        insert_loja(nome_loja, rua_loja, bairro_loja, numero_loja, cidade_loja, estado_loja, cep_loja)
+        st.write(f"Loja {nome_loja} cadastrada com sucesso.")
+    
+    # Atribuição de Pesquisador a Loja
+    gestores = get_pesquisadores()  # Supondo que a função `get_pesquisadores` também retorne os gestores
+    gestor_selecionado = st.selectbox("Escolha o Gestor", ["Escolha o gestor"] + [gestor[0] for gestor in gestores])
+    pesquisador_selecionado = st.selectbox("Escolha o Pesquisador", ["Escolha o pesquisador"] + [pesquisador[0] for pesquisador in st.session_state.pesquisadores])
+    loja_selecionada = st.selectbox("Escolha a Loja", ["Escolha a loja"] + st.session_state.lojas_registradas)
 
-    # Exibir lista de lojas cadastradas
-    st.subheader("Lojas Cadastradas")
-    if st.session_state.lojas_registradas:
-        for loja in st.session_state.lojas_registradas:
-            st.write(loja)
-    else:
-        st.write("Nenhuma loja cadastrada.")
+    # Função para atribuir um pesquisador a uma loja
+    def assign_researcher_to_store(pesquisador_nome, loja_nome, gestor_nome):
+        conn = create_connection()
+        cursor = conn.cursor()
+
+        # Verificar se o gestor está no banco de dados
+        cursor.execute("""
+            SELECT id_user FROM users_table WHERE name = %s AND role = 'gestor'
+        """, (gestor_nome,))
+        gestor_id = cursor.fetchone()
+
+        # Se o gestor existe, atribuir pesquisador à loja
+        if gestor_id:
+            cursor.execute("""
+                SELECT id_user FROM users_table WHERE name = %s AND role = 'gestor'
+            """, (gestor_nome,))
+            conn.commit()
+            st.write(f"Pesquisador(a) {pesquisador_nome} foi atribuído à Loja {loja_nome} pelo(a) Gestor(a) {gestor_nome}.")
+        
+        # Exibe o botão para atribuir pesquisador à loja
+    if st.button("Atribuir Pesquisador à Loja"):
+        if pesquisador_selecionado != "Escolha o pesquisador" and loja_selecionada != "Escolha a loja" and gestor_selecionado != "Escolha o gestor":
+            assign_researcher_to_store(pesquisador_selecionado, loja_selecionada, gestor_selecionado)
+        else:
+            st.warning("Por favor, selecione um pesquisador, uma loja e um gestor.")
