@@ -1,4 +1,4 @@
-from db_connection import create_connection
+from databases.db_connection import create_connection
 
 def create_register_table():
     conn = create_connection()
