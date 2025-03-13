@@ -271,13 +271,18 @@ if credentials and not credentials.expired:
         st.sidebar.write(f"Bem-vindo(a), {user_info['name']} ({user_email})")
         if user_role:
             st.sidebar.markdown(f"Logado como **{user_role}**")
+            # Redirecionamento para tela_pesquisador.py se o role for "pesquisador" ou tela_gestor.py se o role for "gestor" 
+            if user_role == "pesquisador":
+                st.switch_page("pages/tela_pesquisador.py")
+            elif user_role == "gestor":
+                st.switch_page("pages/tela_gestor.py")
         else:
             st.sidebar.write(f"Usuário sem permissões")
 
         if st.sidebar.button("Logout"):
             st.session_state["credentials"] = None
             st.session_state.pop("state", None)
-            st.rerun()
+            st.switch_page("tela_inicial.py")
     else:
         st.sidebar.error("Erro ao carregar informações do usuário.")
 else:
