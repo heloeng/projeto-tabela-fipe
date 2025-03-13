@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from databases.db_connection import create_connection
+from db_connection import create_connection
 from datetime import datetime
 
 # Função para recuperar as marcas do banco de dados
@@ -240,6 +240,67 @@ elif page == "Área do Gestor":
             st.write(f"{pesquisador[0]} - {pesquisador[1]}")
     else:
         st.write("Nenhum pesquisador cadastrado.")
+
+        # Função para adicionar um novo gestor
+def insert_gestor(name, email):
+    conn = create_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        INSERT INTO users_table (name, email, role) 
+        VALUES (%s, %s, 'Gestor')
+        ON CONFLICT (email) DO NOTHING
+    """, (name, email))
+    
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+# Função para adicionar gestor ao banco de dados
+def insert_gestor(name, email):
+    conn = create_connection()
+    cursor = conn.cursor()
+    
+    role = 'gestor'  # Papel do gestor
+    
+    cursor.execute("""
+        INSERT INTO users_table (name, email, role)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (email) DO NOTHING
+    """, (name, email, role))
+    
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+# Inicializar a lista de gestores no session_state, se ainda não existir
+if 'gestores' not in st.session_state:
+    st.session_state.gestores = []
+
+# Cadastro de Gestor
+st.subheader("Cadastrar Gestor")
+nome_gestor = st.text_input("Nome do Gestor", key="nome_gestor")
+email_gestor = st.text_input("E-mail do Gestor", key="email_gestor")
+
+if st.button("Cadastrar Gestor"):
+    if nome_gestor and email_gestor:
+        # Verificar se o e-mail já está na lista de gestores cadastrados
+        if email_gestor not in [gestor[1] for gestor in st.session_state.gestores]:
+            insert_gestor(nome_gestor, email_gestor)
+            st.session_state.gestores.append((nome_gestor, email_gestor))  # Adiciona o novo gestor à lista
+            st.success(f"Gestor {nome_gestor} cadastrado com sucesso!")
+        else:
+            st.error(f"Gestor com e-mail {email_gestor} já cadastrado.")
+    else:
+        st.error("Por favor, insira o nome e e-mail válidos para o gestor.")
+
+# Exibir lista de gestores cadastrados
+st.subheader("Gestores Cadastrados")
+if st.session_state.gestores:
+    for gestor in st.session_state.gestores:
+        st.write(f"{gestor[0]} - {gestor[1]}")
+else:
+    st.write("Nenhum gestor cadastrado.")
     
     # Cadastro de Loja
     st.subheader("Cadastrar Loja")
