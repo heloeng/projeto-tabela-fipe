@@ -3,6 +3,8 @@ import requests
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 import os
+import psycopg2
+import db_connection
 
 # Configurações do Google OAuth
 SCOPES = ["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"]
@@ -45,6 +47,20 @@ def authenticate():
             )
         except Exception as e:
             st.error(f"Erro ao iniciar autenticação: {str(e)}")
+
+    
+# Consulta o role do usuário na tabela users_table usando db_connection
+def get_user_role(email):
+    try:
+        conn = db_connection.create_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT role FROM users_table WHERE email = %s", (email,))
+        result = cursor.fetchone()
+        conn.close()
+        return result[0] if result else None
+    except Exception as e:
+        st.error(f"Erro ao consultar o banco de dados: {str(e)}")
+        return None
 
 # Processa o callback do OAuth
 def process_callback():
@@ -128,7 +144,15 @@ credentials = get_credentials()
 if credentials and not credentials.expired:
     user_info = get_user_info(credentials)
     if user_info:
-        st.sidebar.write(f"Bem-vindo(a), {user_info['name']} ({user_info['email']})")
+        user_email = user_info['email']
+        user_role = get_user_role(user_email) #Consulta da role do usuário na tabela user_table
+
+        st.sidebar.write(f"Bem-vindo(a), {user_info['name']} ({user_email})")
+        if user_role:
+            st.sidebar.markdown(f"Logado como **{user_role}**")
+        else:
+            st.sidebar.write(f"Usuário sem permissões")
+
         if st.sidebar.button("Logout"):
             st.session_state["credentials"] = None
             st.session_state.pop("state", None)

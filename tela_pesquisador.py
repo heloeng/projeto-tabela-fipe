@@ -28,6 +28,9 @@ page = st.sidebar.radio("Navegação", ["Tela Inicial", "Pesquisador"], key="nav
 
 # Botão de logout (sem funcionalidade)
 if st.sidebar.button("Logout"):
+    # st.session_state["credentials"] = None
+    # st.session_state.pop("state", None)
+    # st.rerun()
     st.write("Você clicou em Logout!")  # Esse botão não faz nada por enquanto, apenas visual.
 
 # Tela Inicial (usuário)
