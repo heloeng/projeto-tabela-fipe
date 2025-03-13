@@ -12,12 +12,26 @@ SCOPES = ["openid", "https://www.googleapis.com/auth/userinfo.email", "https://w
 REDIRECT_URI = "http://localhost:8501"
 CLIENT_SECRETS_FILE = "client_secret.json"
 
+# Verifica se o arquivo client_secret.json existe
+if not os.path.exists(CLIENT_SECRETS_FILE):
+    st.error(f"Arquivo {CLIENT_SECRETS_FILE} não encontrado. Por favor, coloque-o no diretório do projeto.")
+    st.stop()
+
+# Gerenciamento de credenciais no session_state
+def get_credentials():
+    if "credentials" not in st.session_state:
+        st.session_state["credentials"] = None
+    return st.session_state["credentials"]
+
+def set_credentials(credentials):
+    st.session_state["credentials"] = credentials
+
 # Função para recuperar as lojas do banco de dados
 def get_lojas():
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT id, name, street, number, neighborhood, city, state, cep 
+    SELECT id_store, name, street, number, neighborhood, city, state, zip_code
     FROM stores_table
     """)
     lojas = cursor.fetchall()
@@ -147,20 +161,6 @@ if 'lojas_registradas' not in st.session_state:
 
 #------INICIO BLOCO DE AUTENTICAÇÃO-----
 
-# Verifica se o arquivo client_secret.json existe
-if not os.path.exists(CLIENT_SECRETS_FILE):
-    st.error(f"Arquivo {CLIENT_SECRETS_FILE} não encontrado. Por favor, coloque-o no diretório do projeto.")
-    st.stop()
-
-# Gerenciamento de credenciais no session_state
-def get_credentials():
-    if "credentials" not in st.session_state:
-        st.session_state["credentials"] = None
-    return st.session_state["credentials"]
-
-def set_credentials(credentials):
-    st.session_state["credentials"] = credentials
-
 # Fluxo de autenticação
 def authenticate():
     if not get_credentials():
@@ -188,7 +188,7 @@ def authenticate():
 # Consulta o role do usuário na tabela users_table usando db_connection
 def get_user_role(email):
     try:
-        conn = db_connection.create_connection()
+        conn = create_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT role FROM users_table WHERE email = %s", (email,))
         result = cursor.fetchone()
@@ -251,6 +251,10 @@ def get_user_info(credentials):
     
 #------FIM BLOCO DE AUTENTICAÇÃO-----
 
+# Processa o callback no início do script
+if "code" in st.query_params:
+    process_callback()
+
 # Sidebar
 st.sidebar.title("Menu")
 page = st.sidebar.radio("Navegação", ["Tela Inicial"], key="navegacao_radio")
@@ -268,13 +272,18 @@ if credentials and not credentials.expired:
         st.sidebar.write(f"Bem-vindo(a), {user_info['name']} ({user_email})")
         if user_role:
             st.sidebar.markdown(f"Logado como **{user_role}**")
+            # Redirecionamento para tela_pesquisador.py se o role for "pesquisador" ou tela_gestor.py se o role for "gestor" 
+            if user_role == "pesquisador":
+                st.switch_page("pages/tela_pesquisador.py")
+            elif user_role == "gestor":
+                st.switch_page("pages/tela_gestor.py")
         else:
             st.sidebar.write(f"Usuário sem permissões")
 
         if st.sidebar.button("Logout"):
             st.session_state["credentials"] = None
             st.session_state.pop("state", None)
-            st.rerun()
+            st.switch_page("tela_inicial.py")
     else:
         st.sidebar.error("Erro ao carregar informações do usuário.")
 else:
