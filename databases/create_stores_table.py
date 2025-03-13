@@ -24,12 +24,12 @@ def create_stores_table():
         CREATE TABLE IF NOT EXISTS stores_table (
             id_store SERIAL PRIMARY KEY,
             name TEXT UNIQUE NOT NULL,
-            city TEXT NOT NULL,
-            state TEXT NOT NULL,
             street TEXT,
             neighborhood TEXT,
-            number TEXT,
-            zip_code TEXT
+            number TEXT,             
+            city TEXT NOT NULL,
+            state TEXT NOT NULL,           
+            cep TEXT
         );
     """)
 
@@ -39,14 +39,14 @@ def create_stores_table():
     print("Tabela `stores_table` criada com sucesso!")
 
 #  Inserir Loja
-def insert_store(name, city, state, street, neighborhood, number, zip_code):
+def insert_store(name, street, neighborhood, number, city, state, cep):
     conn = create_connection()
     cursor = conn.cursor()
     
     cursor.execute("""
-        INSERT INTO stores_table (name, city, state, street, neighborhood, number, zip_code)
+        INSERT INTO stores_table (name, street, neighborhood, number, city, state, cep)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """, (name, city, state, street, neighborhood, number, zip_code))
+    """, (name, street, neighborhood, number, city, state, cep))
     
     conn.commit()
     cursor.close()
