@@ -1,4 +1,4 @@
-from db_connection import create_connection
+from databases.db_connection import create_connection
 
 #  Criar a tabela `users_table`
 def create_users_table():

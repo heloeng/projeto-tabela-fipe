@@ -1,10 +1,10 @@
-from create_users_table import create_users_table
-from create_research_table import create_research_table
-from create_brands_table import create_brands_table
-from create_models_table import create_models_table
-from create_vehicles_table import create_vehicles_table
-from create_register_table import create_register_table
-from create_stores_table import create_stores_table
+from databases.create_users_table import create_users_table
+from databases.create_research_table import create_research_table
+from databases.create_brands_table import create_brands_table
+from databases.create_models_table import create_models_table
+from databases.create_vehicles_table import create_vehicles_table
+from databases.create_register_table import create_register_table
+from databases.create_stores_table import create_stores_table
 
 def main():
     print("Verificando e criando tabelas no banco de dados...")
