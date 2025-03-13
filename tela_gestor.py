@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from db_connection import create_connection
+from databases.db_connection import create_connection
 from datetime import datetime
 
 # Função para recuperar as marcas do banco de dados
