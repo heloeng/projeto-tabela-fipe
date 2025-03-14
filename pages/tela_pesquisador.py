@@ -1,8 +1,6 @@
 import streamlit as st
 from databases.db_connection import create_connection
-from tela_inicial import get_user_role
-from tela_inicial import get_user_info
-from tela_inicial import get_credentials
+from tela_inicial import get_user_role, get_user_info, get_credentials
 import psycopg2
 from datetime import datetime
 from decimal import Decimal
