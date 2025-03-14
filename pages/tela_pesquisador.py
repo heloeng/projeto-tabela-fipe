@@ -122,65 +122,64 @@ def get_years_by_model(brand_name, model_name):
 
 # Função para registrar o preço do veículo
 # Função para registrar o preço do veículo
-def register_vehicle_price(marca, modelo, loja_id, preco, ano):
+def register_vehicle_price(usuario, loja, modelo, ano, preco):
     conn = create_connection()
     cursor = conn.cursor()
 
-    # Recupera o ID do modelo
-    cursor.execute("SELECT id_model FROM models_table WHERE name = %s", (modelo,))
-    id_model = cursor.fetchone()
-    if id_model is None:
-        st.error(f"Modelo '{modelo}' não encontrado.")
-        return
+    # # Recupera o ID do modelo
+    # cursor.execute("SELECT id_model FROM models_table WHERE name = %s", (modelo,))
+    # id_model = cursor.fetchone()
+    # if id_model is None:
+    #     st.error(f"Modelo '{modelo}' não encontrado.")
+    #     return
 
-    # Verifique se os dados de preço existem antes de calcular o novo valor
-    if avg_price is not None and price_count is not None:
-        new_avg_price = (avg_price * price_count + preco) / (price_count + 1)
-    else:
-    # Se não houver dados anteriores, o novo preço será o preço atual
-        new_avg_price = preco
 
 # Agora, faça o update com o novo valor de new_avg_price
     cursor.execute("""
-    UPDATE vehicles_table v
-    SET v.avg_price = %s, v.preco = %s
-    FROM stores_table s
-    WHERE v.id_model = %s 
-      AND v.year_mod = %s 
-      AND s.id_store = %s
-      AND s.id_store = v.id_store
-""", (new_avg_price, preco, id_model[0], ano, loja_id))
+    INSERT INTO register_table(id_user, id_store, id_vehicle, year_man, price)
+    VALUES (
+    (SELECT id_user FROM users_table WHERE  email = %s),
+    (SELECT id_store FROM stores_table WHERE  name = %s),
+    (SELECT id_vehicle FROM vehicles_table WHERE  year_mod = %s),
+    %s,
+    %s
+    )
+""", (usuario, loja, modelo, ano, preco))
 
-    existing_price_data = cursor.fetchone()  # Obtemos o preço médio e a quantidade de registros
+    # existing_price_data = cursor.fetchone()  # Obtemos o preço médio e a quantidade de registros
 
-    if existing_price_data and existing_price_data[0] is not None:
-        avg_price = existing_price_data[0]
-        price_count = existing_price_data[1]
+    # if existing_price_data and existing_price_data[0] is not None:
+    #     avg_price = existing_price_data[0]
+    #     price_count = existing_price_data[1]
 
-        # Calculando o novo preço médio
-        new_avg_price = (Decimal(avg_price) * Decimal(price_count) + Decimal(preco)) / (Decimal(price_count) + 1)
+    #     # Calculando o novo preço médio
+    #     new_avg_price = (Decimal(avg_price) * Decimal(price_count) + Decimal(preco)) / (Decimal(price_count) + 1)
 
-        # Atualiza o preço médio na tabela vehicles_table
-        cursor.execute("""
-        UPDATE vehicles_table
-        SET avg_price = %s, preco = %s
-        WHERE id_model = %s AND year_mod = %s AND store_id = %s  -- Ajuste conforme necessário
-        """, (new_avg_price, preco, id_model[0], ano, loja_id))
+    #     # Atualiza o preço médio na tabela vehicles_table
+    #     cursor.execute("""
+    #     UPDATE vehicles_table
+    #     SET avg_price = %s, preco = %s
+    #     WHERE id_model = %s AND year_mod = %s AND store_id = %s  -- Ajuste conforme necessário
+    #     """, (new_avg_price, preco, id_model[0], ano, loja_id))
 
-        conn.commit()
-        st.success(f"Preço atualizado! Nova média de preço para {modelo} ({ano}): R$ {new_avg_price:.2f}")
-    else:
-        # Se não houver preços registrados, insere o novo preço como o primeiro preço
-        cursor.execute("""
-        INSERT INTO vehicles_table (id_model, year_mod, preco, avg_price, store_id)  -- Ajuste conforme necessário
-        VALUES (%s, %s, %s, %s, %s)
-        """, (id_model[0], ano, preco, preco, loja_id))
+    #     conn.commit()
+    #     st.success(f"Preço atualizado! Nova média de preço para {modelo} ({ano}): R$ {new_avg_price:.2f}")
+    # else:
+    #     # Se não houver preços registrados, insere o novo preço como o primeiro preço
+    #     cursor.execute("""
+    #     INSERT INTO vehicles_table (id_model, year_mod, preco, avg_price, store_id)  -- Ajuste conforme necessário
+    #     VALUES (%s, %s, %s, %s, %s)
+    #     """, (id_model[0], ano, preco, preco, loja_id))
 
-        conn.commit()
-        st.success(f"Preço registrado! Preço de {modelo} ({ano}): {preco:.2f}")
+    #     conn.commit()
+    #     st.success(f"Preço registrado! Preço de {modelo} ({ano}): {preco:.2f}")
+    #inserted_reg = cursor.fetchone()
 
+    conn.commit()
     cursor.close()
     conn.close()
+
+    #return inserted_reg is not None
 
 # Função para calcular o preço médio do veículo
 def get_vehicle_price_avg(brand_name, model_name, year):
@@ -297,12 +296,17 @@ if page == "Área do Pesquisador":
 
             lojas = [loja['nome'] for loja in st.session_state.lojas_registradas]
             loja_selecionada = st.selectbox("Loja", lojas)
+            ano_fab = st.number_input("Ano de Fabricação", min_value=0, step=1, format="%d")
             preco = st.number_input("Preço", min_value=0.0, format="%.2f")
 
             if st.button("Registrar Preço"):
                 # Agora, a variável loja_selecionada é comparada corretamente com loja['nome']
                 loja_id = next(loja['id'] for loja in st.session_state.lojas_registradas if loja['nome'] == loja_selecionada)
-                register_vehicle_price(marca_selecionada, modelo_selecionado, loja_id, preco, ano_selecionado)
+                register_vehicle_price(user_info['email'], loja_selecionada, ano_selecionado, ano_fab, preco)
+                st.success(f"Preço do veículo cadastrado com sucesso!")
+                #else:
+                    #st.write(f"Erro ao cadastrar o preço.")
+                #usuario, loja, modelo, ano, preco
 
 # Tela para registrar veículos
 if page == "Registrar Veículo":
