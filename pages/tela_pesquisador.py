@@ -207,7 +207,7 @@ if 'lojas_registradas' not in st.session_state:
     st.session_state.lojas_registradas = get_lojas()  # Carrega as lojas do banco de dados
 
 st.sidebar.title("Menu")
-page = st.sidebar.radio("Navegação", ["Tela Inicial", "Área do Pesquisador", "Registrar Veículo"], key="navegacao_radio")
+page = st.sidebar.radio("Navegação", ["Tela Inicial", "Área do Pesquisador", "Registrar Veículo"], key="navegacao_radio_P")
 
 st.sidebar.header("Acesso para colaboradores")
 credentials = get_credentials()

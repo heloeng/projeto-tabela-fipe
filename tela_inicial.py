@@ -258,7 +258,7 @@ if "code" in st.query_params:
 
 # Sidebar
 st.sidebar.title("Menu")
-page = st.sidebar.radio("Navegação", ["Tela Inicial"], key="navegacao_radio")
+page = st.sidebar.radio("Navegação", ["Tela Inicial"], key="navegacao_radio_I")
 
 # Autenticação na sidebar
 st.sidebar.header("Acesso para colaboradores")
