@@ -10,6 +10,11 @@ def update_avg_price():
     # Obtendo a data do dia anterior
     today = datetime.now().date()
     yesterday = (datetime.now() - timedelta(days=1)).date()
+    hour = datetime.now().hour   # the current hour
+    minute = datetime.now().minute # the current minute
+    minutes = str(minute).zfill(2)
+    
+    print('Função para cálculo da média de preços executada por último em',today, f'às {hour}:{minutes}' )
 
     
     # Consulta para calcular a média de price por id_vehicle para registros do dia anterior
@@ -34,6 +39,8 @@ def update_avg_price():
     conn.commit()
     cur.close()
     conn.close()
+
+
 
 if __name__ == "__main__":
     update_avg_price()
