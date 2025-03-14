@@ -5,13 +5,14 @@ from tela_inicial import get_user_info
 from tela_inicial import get_credentials
 import psycopg2
 from datetime import datetime
+from decimal import Decimal
 
 # Função para recuperar as lojas do banco de dados
 def get_lojas():
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT id_store, name, street, number, neighborhood, city, state, zip_code
+    SELECT id_store, name, street, number, neighborhood, city, state, cep 
     FROM stores_table
     """)
     lojas = cursor.fetchall()
@@ -122,6 +123,7 @@ def get_years_by_model(brand_name, model_name):
     return [year[0] for year in years] if years else []
 
 # Função para registrar o preço do veículo
+# Função para registrar o preço do veículo
 def register_vehicle_price(marca, modelo, loja_id, preco, ano):
     conn = create_connection()
     cursor = conn.cursor()
@@ -133,48 +135,72 @@ def register_vehicle_price(marca, modelo, loja_id, preco, ano):
         st.error(f"Modelo '{modelo}' não encontrado.")
         return
 
-    # Verifica se já existe um preço registrado para esse modelo/ano/loja
-    cursor.execute("""
-        SELECT id_vehicle_price FROM vehicle_prices_table
-        WHERE id_model = %s AND year_mod = %s AND id_store = %s
-    """, (id_model[0], ano, loja_id))
-    existing_price = cursor.fetchone()
-
-    if existing_price:
-        st.warning(f"Preço para {modelo} ({ano}) já registrado nesta loja.")
+    # Verifique se os dados de preço existem antes de calcular o novo valor
+    if avg_price is not None and price_count is not None:
+        new_avg_price = (avg_price * price_count + preco) / (price_count + 1)
     else:
-        # Inserir o novo preço no banco de dados
+    # Se não houver dados anteriores, o novo preço será o preço atual
+        new_avg_price = preco
+
+# Agora, faça o update com o novo valor de new_avg_price
+    cursor.execute("""
+    UPDATE vehicles_table v
+    SET v.avg_price = %s, v.preco = %s
+    FROM stores_table s
+    WHERE v.id_model = %s 
+      AND v.year_mod = %s 
+      AND s.id_store = %s
+      AND s.id_store = v.id_store
+""", (new_avg_price, preco, id_model[0], ano, loja_id))
+
+    existing_price_data = cursor.fetchone()  # Obtemos o preço médio e a quantidade de registros
+
+    if existing_price_data and existing_price_data[0] is not None:
+        avg_price = existing_price_data[0]
+        price_count = existing_price_data[1]
+
+        # Calculando o novo preço médio
+        new_avg_price = (Decimal(avg_price) * Decimal(price_count) + Decimal(preco)) / (Decimal(price_count) + 1)
+
+        # Atualiza o preço médio na tabela vehicles_table
         cursor.execute("""
-            INSERT INTO vehicle_prices_table (id_model, year_mod, id_store, price)
-            VALUES (%s, %s, %s, %s)
-        """, (id_model[0], ano, loja_id, preco))
+        UPDATE vehicles_table
+        SET avg_price = %s, preco = %s
+        WHERE id_model = %s AND year_mod = %s AND store_id = %s  -- Ajuste conforme necessário
+        """, (new_avg_price, preco, id_model[0], ano, loja_id))
 
         conn.commit()
-        st.success(f"Preço de {modelo} ({ano}) registrado com sucesso na loja!")
+        st.success(f"Preço atualizado! Nova média de preço para {modelo} ({ano}): R$ {new_avg_price:.2f}")
+    else:
+        # Se não houver preços registrados, insere o novo preço como o primeiro preço
+        cursor.execute("""
+        INSERT INTO vehicles_table (id_model, year_mod, preco, avg_price, store_id)  -- Ajuste conforme necessário
+        VALUES (%s, %s, %s, %s, %s)
+        """, (id_model[0], ano, preco, preco, loja_id))
+
+        conn.commit()
+        st.success(f"Preço registrado! Preço de {modelo} ({ano}): {preco:.2f}")
 
     cursor.close()
     conn.close()
 
 # Função para calcular o preço médio do veículo
-def get_vehicle_price_avg(brand_name, model_name):
+def get_vehicle_price_avg(brand_name, model_name, year):
     conn = create_connection()
     cursor = conn.cursor()
-
     cursor.execute("""
-        SELECT AVG(price), COUNT(*) 
-        FROM vehicle_prices_table
-        JOIN models_table ON vehicle_prices_table.id_model = models_table.id_model
-        JOIN brands_table ON models_table.id_brand = brands_table.id_brand
-        WHERE brands_table.name = %s AND models_table.name = %s
-    """, (brand_name, model_name))
-
+    SELECT AVG(avg_price), COUNT(*)
+    FROM vehicles_table
+    JOIN models_table ON vehicles_table.id_model = models_table.id_model
+    JOIN brands_table ON models_table.id_brand = brands_table.id_brand
+    WHERE brands_table.name = %s AND models_table.name = %s AND vehicles_table.year_mod = %s
+""", (brand_name, model_name, year))
     result = cursor.fetchone()
     cursor.close()
     conn.close()
-
-    if result and result[0] is not None:
-        return result[0], result[1]  # Preço médio, contagem de registros
-    return None, 0  # Caso não haja dados
+    if result:
+        return result[0], result[1]  # Average price and count of records
+    return None, 0
 
 # Armazenamento de informações no estado da sessão
 if 'lojas_registradas' not in st.session_state:
@@ -213,7 +239,7 @@ else:
 # Tela Inicial
 if page == "Tela Inicial":
     st.title("Consulta de Preços de Veículos")
-    st.subheader("Preencha os campos abaixo")
+    st.subheader("Preencha os campos abaixo e clique em 'Pesquisar'")
 
     # Recupera as marcas diretamente do banco
     marcas = get_brands()
@@ -230,26 +256,29 @@ if page == "Tela Inicial":
     else:
         modelo_selecionado = None  # Caso nenhum modelo tenha sido selecionado
 
-    # Lista de "Ano/Modelo" a ser exibida de acordo com o modelo
-    if modelo_selecionado and marca_selecionada:
-        ano_modelo = get_years_by_model(marca_selecionada, modelo_selecionado)
-    else:
-        ano_modelo = []
-    ano_selecionado = st.selectbox("Ano/Modelo", ["Escolha um ano/modelo"] + ano_modelo, key="ano_selecionado_inicial")
-
-    # Verifica se todos os campos foram selecionados corretamente
-    if st.button("Pesquisar"):
-        if modelo_selecionado and marca_selecionada and ano_selecionado:
-            chave_veiculo = f"{marca_selecionada} - {modelo_selecionado} ({ano_selecionado})"
-
-            # Exibe o preço médio do veículo
-            avg_price, count = get_vehicle_price_avg(marca_selecionada, modelo_selecionado)
-            if avg_price is None:
-                avg_price = 0.0  # Se não houver preços registrados, o valor será 0
-            st.write(f"O preço médio para {chave_veiculo} é R${avg_price:.2f}, com {count} registros.")
-
+    # Quando uma marca ou modelo for selecionado, carrega os anos/modelos disponíveis
+    if modelo_selecionado or marca_selecionada != "Escolha uma marca":
+        anos_modelos = get_years_by_model(marca_selecionada, modelo_selecionado)
+        if anos_modelos:  # Verifica se há anos/modelos disponíveis
+            ano_modelo_selecionado = st.selectbox("Ano/Modelo", ["Escolha um ano/modelo"] + anos_modelos, key="ano_modelo_selecionado")
         else:
-            st.warning("Por favor, preencha todos os campos para realizar a pesquisa.")
+            ano_modelo_selecionado = None  # Caso não haja anos/modelos, o campo é ocultado
+    else:
+        ano_modelo_selecionado = None  # Caso nem marca nem modelo tenha sido selecionado
+
+    # Adiciona o botão "Pesquisar"
+    if st.button("Pesquisar"):
+        # Verifica se todos os campos foram preenchidos
+        if marca_selecionada != "Escolha uma marca" and modelo_selecionado and ano_modelo_selecionado:
+            # Chama a função para calcular o preço médio
+            preco_medio, count = get_vehicle_price_avg(marca_selecionada, modelo_selecionado, ano_modelo_selecionado)
+            if preco_medio:
+                # Exibe o preço médio do veículo
+                st.write(f"Preço médio para {marca_selecionada} {modelo_selecionado} {ano_modelo_selecionado}: R$ {preco_medio:,.2f} ({count} registros)")
+            else:
+                st.warning("Não há registros suficientes para calcular o preço médio.")
+        else:
+            st.warning("Por favor, selecione todos os campos antes de pesquisar.")
 
 # Área do Pesquisador
 if page == "Área do Pesquisador":
