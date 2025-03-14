@@ -272,7 +272,7 @@ if page == "Tela Inicial":
             preco_medio, count = get_vehicle_price_avg(marca_selecionada, modelo_selecionado, ano_modelo_selecionado)
             if preco_medio:
                 # Exibe o preço médio do veículo
-                st.write(f"Preço médio para {marca_selecionada} {modelo_selecionado} {ano_modelo_selecionado}: R$ {preco_medio:,.2f} ({count} registros)")
+                st.write(f"Preço médio para {marca_selecionada} {modelo_selecionado} {ano_modelo_selecionado}: R$ {preco_medio:,.2f}.")# ({count} registros)")
             else:
                 st.warning("Não há registros suficientes para calcular o preço médio.")
         else:
