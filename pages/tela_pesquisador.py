@@ -134,11 +134,11 @@ def register_vehicle_price(usuario, loja, modelo, ano, preco):
     #     return
 
 
-# Agora, faça o update com o novo valor de new_avg_price
+# Agora, faça o update com o novo registro
     cursor.execute("""
     INSERT INTO register_table(id_user, id_store, id_vehicle, year_man, price)
     VALUES (
-    (SELECT id_user FROM users_table WHERE  email = %s),
+    (SELECT id_user FROM users_table WHERE  email = %s LIMIT 1),
     (SELECT id_store FROM stores_table WHERE  name = %s),
     (SELECT id_vehicle FROM vehicles_table WHERE  year_mod = %s),
     %s,
@@ -146,34 +146,7 @@ def register_vehicle_price(usuario, loja, modelo, ano, preco):
     )
 """, (usuario, loja, modelo, ano, preco))
 
-    # existing_price_data = cursor.fetchone()  # Obtemos o preço médio e a quantidade de registros
 
-    # if existing_price_data and existing_price_data[0] is not None:
-    #     avg_price = existing_price_data[0]
-    #     price_count = existing_price_data[1]
-
-    #     # Calculando o novo preço médio
-    #     new_avg_price = (Decimal(avg_price) * Decimal(price_count) + Decimal(preco)) / (Decimal(price_count) + 1)
-
-    #     # Atualiza o preço médio na tabela vehicles_table
-    #     cursor.execute("""
-    #     UPDATE vehicles_table
-    #     SET avg_price = %s, preco = %s
-    #     WHERE id_model = %s AND year_mod = %s AND store_id = %s  -- Ajuste conforme necessário
-    #     """, (new_avg_price, preco, id_model[0], ano, loja_id))
-
-    #     conn.commit()
-    #     st.success(f"Preço atualizado! Nova média de preço para {modelo} ({ano}): R$ {new_avg_price:.2f}")
-    # else:
-    #     # Se não houver preços registrados, insere o novo preço como o primeiro preço
-    #     cursor.execute("""
-    #     INSERT INTO vehicles_table (id_model, year_mod, preco, avg_price, store_id)  -- Ajuste conforme necessário
-    #     VALUES (%s, %s, %s, %s, %s)
-    #     """, (id_model[0], ano, preco, preco, loja_id))
-
-    #     conn.commit()
-    #     st.success(f"Preço registrado! Preço de {modelo} ({ano}): {preco:.2f}")
-    #inserted_reg = cursor.fetchone()
 
     conn.commit()
     cursor.close()
