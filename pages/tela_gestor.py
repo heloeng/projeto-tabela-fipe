@@ -129,19 +129,24 @@ def get_pesquisadores():
     return [(pesquisador[0], pesquisador[1]) for pesquisador in pesquisadores]
 
 # Função para adicionar um novo pesquisador
-def insert_pesquisador(name, email):
+def insert_pesquisador(name, email, role):
     conn = create_connection()
     cursor = conn.cursor()
     
     cursor.execute("""
-        INSERT INTO users_table (name, email) 
-        VALUES (%s, %s)
+        INSERT INTO users_table (name, email, role) 
+        VALUES (%s, %s, %s)
         ON CONFLICT (email) DO NOTHING
-    """, (name, email))
+        RETURNING id_user -- Retorna o ID do usuário se a inserção ocorreu
+    """, (name, email, role))
+
+    inserted = cursor.fetchone()
     
     conn.commit()
     cursor.close()
     conn.close()
+
+    return inserted is not None
 
 # Função para adicionar uma nova loja
 def insert_loja(name, street, neighborhood, number, city, state, cep):
@@ -223,15 +228,18 @@ elif page == "Área do Gestor":
     st.title("Área do Gestor")
     
     # Cadastro de Pesquisador
-    st.subheader("Cadastrar Pesquisador")
+    st.subheader("Cadastrar Usuário")
     nome_pesquisador = st.text_input("Nome do Pesquisador", key="nome_pesquisador")
     email_pesquisador = st.text_input("E-mail do Pesquisador", key="email_pesquisador")
+    role_usuario = st.selectbox("Permissão", ["gestor", "pesquisador"], key="role_usuario")
      
     # Exibindo o botão de cadastro
-    if st.button("Cadastrar Pesquisador"):
-        insert_pesquisador(nome_pesquisador, email_pesquisador)
-        st.session_state.pesquisadores.append((nome_pesquisador, email_pesquisador))
-        st.write(f"Pesquisador {nome_pesquisador} ({email_pesquisador}) cadastrado com sucesso.")
+    if st.button("Cadastrar Usuário"):
+        if insert_pesquisador(nome_pesquisador, email_pesquisador, role_usuario):
+            st.session_state.pesquisadores.append((nome_pesquisador, email_pesquisador, role_usuario))
+            st.write(f"Usuário {nome_pesquisador} ({email_pesquisador}) cadastrado com sucesso como {role_usuario}.")
+        else:
+            st.warning(f"O usuário com o e-mail {email_pesquisador} já existe no sistema.")
     
     # Cadastro de Loja
     st.subheader("Cadastrar Loja")
@@ -240,7 +248,7 @@ elif page == "Área do Gestor":
     bairro_loja = st.text_input("Bairro", key="bairro_loja")
     numero_loja = st.text_input("Número", key="numero_loja")
     cidade_loja = st.text_input("Cidade", key="cidade_loja")
-    estado_loja = st.selectbox("Estado", estados_dict.keys(), key="estado_loja")
+    estado_loja = st.selectbox("Estado", sorted(estados_dict.keys()), key="estado_loja")
     cep_loja = st.text_input("CEP", key="cep_loja")
 
     # Exibindo o botão de cadastro
