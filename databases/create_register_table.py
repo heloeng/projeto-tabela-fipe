@@ -8,14 +8,12 @@ def create_register_table():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS register_table (
             id_register SERIAL PRIMARY KEY,
-            id_campaign INTEGER NOT NULL,
             id_user INTEGER NOT NULL,
             id_store INTEGER NOT NULL,
             id_vehicle INTEGER NOT NULL,
             year_man INTEGER NOT NULL,
             price NUMERIC(10, 2) NOT NULL,
             reg_date DATE NOT NULL DEFAULT CURRENT_DATE,
-            CONSTRAINT fk_campaign FOREIGN KEY (id_campaign) REFERENCES research_table(id_campaign) ON DELETE CASCADE,
             CONSTRAINT fk_user FOREIGN KEY (id_user) REFERENCES users_table(id_user) ON DELETE CASCADE,
             CONSTRAINT fk_store FOREIGN KEY (id_store) REFERENCES stores_table(id_store) ON DELETE CASCADE,
             CONSTRAINT fk_vehicle FOREIGN KEY (id_vehicle) REFERENCES vehicles_table(id_vehicle) ON DELETE CASCADE
@@ -28,4 +26,4 @@ def create_register_table():
     print("Tabela `register_table` criada com sucesso!")
 
 if __name__ == "__main__":
-    create_vehicles_table()
+    create_register_table()
