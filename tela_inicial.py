@@ -98,17 +98,17 @@ def get_vehicle_price_avg(brand_name, model_name, year):
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT avg_price 
+        SELECT avg_price
         FROM vehicles_table
-        JOIN models_table ON vehicle_prices_table.id_model = models_table.id_model
-        JOIN brands_table ON models_table.id_brand = brands_table.id_brand
-        WHERE brands_table.name = %s AND models_table.name = %s AND vehicle_prices_table.year_mod = %s
+        JOIN models_table ON vehicles_table.id_model = models_table.id_model
+        JOIN brands_table ON vehicles_table.id_brand = brands_table.id_brand
+        WHERE brands_table.name = %s AND models_table.name = %s AND vehicles_table.year_mod = %s
     """, (brand_name, model_name, year))
     result = cursor.fetchone()
     cursor.close()
     conn.close()
     if result:
-        return result[0], result[1]  # Average price and count of records
+        return result[0]#, result[1]  # Average price and count of records
     return None, 0
 
 # Função para registrar o preço do veículo
@@ -325,10 +325,10 @@ if page == "Tela Inicial":
             chave_veiculo = f"{marca_selecionada} - {modelo_selecionado} ({ano_selecionado})"
 
             # Exibe o preço médio do veículo
-            avg_price, count = get_vehicle_price_avg(marca_selecionada, modelo_selecionado, ano_selecionado)
+            avg_price = get_vehicle_price_avg(marca_selecionada, modelo_selecionado, ano_selecionado)
             if avg_price is None:
                 avg_price = 0.0  # Se não houver preço médio, exibe 0,00
 
-            st.write(f"**Preço Médio do {marca_selecionada} - {modelo_selecionado} ({ano_selecionado}):** R$ {avg_price:.2f} (calculado a partir de {count} registros).")
+            st.write(f"**Preço Médio do {marca_selecionada} - {modelo_selecionado} ({ano_selecionado}):** R$ {avg_price:.2f}.")# (calculado a partir de {count} registros).")
         else:
             st.warning("Por favor, selecione uma marca, um modelo e um ano/modelo.")
