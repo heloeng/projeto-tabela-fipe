@@ -8,7 +8,7 @@ def create_vehicles_table():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS vehicles_table (
             id_vehicle SERIAL PRIMARY KEY,
-            year_mod TEXT UNIQUE NOT NULL,
+            year_mod TEXT NOT NULL,
             id_model INTEGER NOT NULL,
             id_brand INTEGER NOT NULL,
             calc_date DATE NOT NULL DEFAULT CURRENT_DATE,
