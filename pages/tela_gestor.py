@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import psycopg2
 from databases.db_connection import create_connection
+from tela_inicial import get_user_role, get_user_info, get_credentials
 from datetime import datetime
 
 # Função para recuperar as marcas do banco de dados
@@ -178,6 +179,33 @@ if 'pesquisadores' not in st.session_state:
 
 st.sidebar.title("Menu")
 page = st.sidebar.radio("Navegação", ["Tela Inicial", "Área do Gestor"], key="navegacao_radio_G")
+
+st.sidebar.header("Acesso para colaboradores")
+credentials = get_credentials()
+
+if credentials and not credentials.expired:
+    user_info = get_user_info(credentials)
+    if user_info:
+        user_email = user_info['email']
+        user_role = get_user_role(user_email)
+
+        st.sidebar.write(f"Bem-vindo(a), {user_info['name']} ({user_email})")
+        if user_role:
+            st.sidebar.markdown(f"Logado como **{user_role}**")
+            if user_role != "gestor":
+                st.switch_page("tela_inicial.py")
+                st.error("Acesso negado: Apenas gestores podem acessar esta página.")
+        else:
+            st.sidebar.write(f"Usuário sem permissões")
+            st.switch_page("tela_inicial.py")
+
+        if st.sidebar.button("Logout"):
+            st.session_state["credentials"] = None
+            st.session_state.pop("state", None)
+            st.switch_page("tela_inicial.py")
+else:
+    st.switch_page("tela_inicial.py")
+    st.error("Você precisa estar logado como gestor para acessar esta página.")
 
 # Tela Inicial
 if page == "Tela Inicial":
