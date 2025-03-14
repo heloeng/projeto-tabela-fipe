@@ -195,7 +195,7 @@ if credentials and not credentials.expired:
         st.sidebar.write(f"Bem-vindo(a), {user_info['name']} ({user_email})")
         if user_role:
             st.sidebar.markdown(f"Logado como **{user_role}**")
-            if user_role != "pesquisador":
+            if user_role != "pesquisador": #Redireciona para tela inicial se role não for definida corretamente.
                 st.switch_page("tela_inicial.py")
                 st.error("Acesso negado: Apenas pesquisadores podem acessar esta página.")
         else:

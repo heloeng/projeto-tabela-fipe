@@ -31,7 +31,7 @@ def get_lojas():
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT id_store, name, street, number, neighborhood, city, state, zip_code
+    SELECT id_store, name, street, number, neighborhood, city, state, cep
     FROM stores_table
     """)
     lojas = cursor.fetchall()
