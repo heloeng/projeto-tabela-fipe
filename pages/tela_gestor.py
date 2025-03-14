@@ -149,19 +149,35 @@ def insert_pesquisador(name, email, role):
 
     return inserted is not None
 
-# Função para adicionar uma nova loja
+
 def insert_loja(name, street, neighborhood, number, city, state, cep):
+    # Verifica se algum campo está vazio
+    if not all([name, street, neighborhood, number, city, state, cep]):
+        st.error("Erro: Todos os campos são obrigatórios. Por favor, preencha todos os campos antes de cadastrar.")
+        return  # Interrompe a função caso tenha campos vazios
+
     conn = create_connection()
     cursor = conn.cursor()
-    
-    cursor.execute("""
-        INSERT INTO stores_table (name, street, neighborhood, number, city, state, cep)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """, (name, street, neighborhood, number, city, state, cep))
-    
-    conn.commit()
+
+    # Verifica se já existe uma loja com esse nome
+    cursor.execute("SELECT id_store FROM stores_table WHERE name = %s", (name,))
+    existing_store = cursor.fetchone()
+
+    if existing_store:
+        st.warning(f"A loja '{name}' já está cadastrada no banco de dados.")
+    else:
+        cursor.execute("""
+            INSERT INTO stores_table (name, street, neighborhood, number, city, state, cep)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (name, street, neighborhood, number, city, state, cep))
+
+        conn.commit()
+        st.success(f"Loja '{name}' cadastrada com sucesso!")
+
     cursor.close()
     conn.close()
+
+
 
 # Dados do estado e cidade
 estados = requests.get("https://servicodados.ibge.gov.br/api/v1/localidades/estados").json()
