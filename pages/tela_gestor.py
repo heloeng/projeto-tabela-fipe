@@ -1,7 +1,6 @@
 import streamlit as st
 import requests
-from databases.db_connection import create_connection
-from tela_inicial import get_user_role, get_user_info, get_credentials
+from db_connection import create_connection
 from datetime import datetime
 
 # Função para recuperar as marcas do banco de dados
@@ -39,15 +38,19 @@ def get_years_by_model(brand_name, model_name):
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT year_mod 
+        SELECT DISTINCT year_mod 
         FROM vehicles_table
         JOIN models_table ON vehicles_table.id_model = models_table.id_model
-        JOIN brands_table ON vehicles_table.id_brand = brands_table.id_brand
+        JOIN brands_table ON models_table.id_brand = brands_table.id_brand
         WHERE brands_table.name = %s AND models_table.name = %s
+        ORDER BY year_mod DESC
     """, (brand_name, model_name))
+    
     years = cursor.fetchall()
+    
     cursor.close()
     conn.close()
+    
     return [year[0] for year in years] if years else []
 
 # Função para calcular o preço médio do veículo
@@ -55,12 +58,12 @@ def get_vehicle_price_avg(brand_name, model_name, year):
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT AVG(price), COUNT(*) 
-        FROM vehicle_prices_table
-        JOIN models_table ON vehicle_prices_table.id_model = models_table.id_model
-        JOIN brands_table ON models_table.id_brand = brands_table.id_brand
-        WHERE brands_table.name = %s AND models_table.name = %s AND vehicle_prices_table.year_mod = %s
-    """, (brand_name, model_name, year))
+    SELECT AVG(avg_price), COUNT(*)
+    FROM vehicles_table
+    JOIN models_table ON vehicles_table.id_model = models_table.id_model
+    JOIN brands_table ON models_table.id_brand = brands_table.id_brand
+    WHERE brands_table.name = %s AND models_table.name = %s AND vehicles_table.year_mod = %s
+""", (brand_name, model_name, year))
     result = cursor.fetchone()
     cursor.close()
     conn.close()
@@ -170,37 +173,13 @@ if 'pesquisadores' not in st.session_state:
 st.sidebar.title("Menu")
 page = st.sidebar.radio("Navegação", ["Tela Inicial", "Área do Gestor"], key="navegacao_radio")
 
-st.sidebar.header("Acesso para colaboradores")
-credentials = get_credentials()
-
-if credentials and not credentials.expired:
-    user_info = get_user_info(credentials)
-    if user_info:
-        user_email = user_info['email']
-        user_role = get_user_role(user_email)
-
-        st.sidebar.write(f"Bem-vindo(a), {user_info['name']} ({user_email})")
-        if user_role:
-            st.sidebar.markdown(f"Logado como **{user_role}**")
-            if user_role != "gestor":
-                st.switch_page("tela_inicial.py")
-                st.error("Acesso negado: Apenas gestores podem acessar esta página.")
-        else:
-            st.sidebar.write(f"Usuário sem permissões")
-            st.switch_page("tela_inicial.py")
-
-        if st.sidebar.button("Logout"):
-            st.session_state["credentials"] = None
-            st.session_state.pop("state", None)
-            st.switch_page("tela_inicial.py")
-else:
-    st.switch_page("tela_inicial.py")
-    st.error("Você precisa estar logado como gestor para acessar esta página.")
+if st.sidebar.button("Logout"):
+    st.write("Você clicou em Logout!")
 
 # Tela Inicial
 if page == "Tela Inicial":
     st.title("Consulta de Preços de Veículos")
-    st.subheader("Preencha os campos abaixo")
+    st.subheader("Preencha os campos abaixo e clique em 'Pesquisar'")
 
     # Recupera as marcas diretamente do banco
     marcas = get_brands()
@@ -217,27 +196,29 @@ if page == "Tela Inicial":
     else:
         modelo_selecionado = None  # Caso nenhum modelo tenha sido selecionado
 
-    # Lista de "Ano/Modelo" a ser exibida de acordo com o modelo
-    if modelo_selecionado and marca_selecionada:
-        ano_modelo = get_years_by_model(marca_selecionada, modelo_selecionado)
-    else:
-        ano_modelo = []
-    ano_selecionado = st.selectbox("Ano/Modelo", ["Escolha um ano/modelo"] + ano_modelo, key="ano_selecionado_inicial")
-
-    # Verifica se todos os campos foram selecionados corretamente
-    if st.button("Pesquisar"):
-        if modelo_selecionado and marca_selecionada and ano_selecionado:
-            chave_veiculo = f"{marca_selecionada} - {modelo_selecionado} ({ano_selecionado})"
-
-            # Exibe o preço médio do veículo
-            avg_price, count = get_vehicle_price_avg(marca_selecionada, modelo_selecionado, ano_selecionado)
-            if avg_price is None:
-                avg_price = 0.0  # Se não houver preço médio, exibe 0,00
-
-            st.write(f"**Preço Médio do {marca_selecionada} - {modelo_selecionado} ({ano_selecionado}):** R$ {avg_price:.2f} (calculado a partir de {count} registros).")
+    # Quando uma marca ou modelo for selecionado, carrega os anos/modelos disponíveis
+    if modelo_selecionado or marca_selecionada != "Escolha uma marca":
+        anos_modelos = get_years_by_model(marca_selecionada, modelo_selecionado)
+        if anos_modelos:  # Verifica se há anos/modelos disponíveis
+            ano_modelo_selecionado = st.selectbox("Ano/Modelo", ["Escolha um ano/modelo"] + anos_modelos, key="ano_modelo_selecionado")
         else:
-            st.warning("Por favor, selecione uma marca, um modelo e um ano/modelo.")
+            ano_modelo_selecionado = None  # Caso não haja anos/modelos, o campo é ocultado
+    else:
+        ano_modelo_selecionado = None  # Caso nem marca nem modelo tenha sido selecionado
 
+    # Adiciona o botão "Pesquisar"
+    if st.button("Pesquisar"):
+        # Verifica se todos os campos foram preenchidos
+        if marca_selecionada != "Escolha uma marca" and modelo_selecionado and ano_modelo_selecionado:
+            # Chama a função para calcular o preço médio
+            preco_medio, count = get_vehicle_price_avg(marca_selecionada, modelo_selecionado, ano_modelo_selecionado)
+            if preco_medio:
+                # Exibe o preço médio do veículo
+                st.write(f"Preço médio para {marca_selecionada} {modelo_selecionado} {ano_modelo_selecionado}: R$ {preco_medio:,.2f} ({count} registros)")
+            else:
+                st.warning("Não há registros suficientes para calcular o preço médio.")
+        else:
+            st.warning("Por favor, selecione todos os campos antes de pesquisar.")
 
 # Área do Gestor
 elif page == "Área do Gestor":
