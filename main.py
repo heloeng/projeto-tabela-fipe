@@ -19,5 +19,4 @@ def main():
 
     print("Todas as tabelas foram verificadas e criadas se necessário!")
 
-if __name__ == "__main__":
-    main()
+main()

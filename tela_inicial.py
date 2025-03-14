@@ -6,6 +6,7 @@ import os
 from databases.db_connection import create_connection
 import psycopg2
 from datetime import datetime
+import main
 
 # Configurações do Google OAuth
 SCOPES = ["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"]
@@ -31,7 +32,7 @@ def get_lojas():
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT id_store, name, street, number, neighborhood, city, state, zip_code
+    SELECT id_store, name, street, number, neighborhood, city, state, cep
     FROM stores_table
     """)
     lojas = cursor.fetchall()
@@ -97,8 +98,8 @@ def get_vehicle_price_avg(brand_name, model_name, year):
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT AVG(price), COUNT(*) 
-        FROM vehicle_prices_table
+        SELECT avg_price 
+        FROM vehicles_table
         JOIN models_table ON vehicle_prices_table.id_model = models_table.id_model
         JOIN brands_table ON models_table.id_brand = brands_table.id_brand
         WHERE brands_table.name = %s AND models_table.name = %s AND vehicle_prices_table.year_mod = %s
