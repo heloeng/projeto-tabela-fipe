@@ -14,7 +14,8 @@ def create_vehicles_table():
             calc_date DATE NOT NULL DEFAULT CURRENT_DATE,
             avg_price NUMERIC(10, 2) NOT NULL,
             CONSTRAINT fk_model FOREIGN KEY (id_model) REFERENCES models_table(id_model) ON DELETE CASCADE,
-            CONSTRAINT fk_brand FOREIGN KEY (id_brand) REFERENCES brands_table(id_brand) ON DELETE CASCADE
+            CONSTRAINT fk_brand FOREIGN KEY (id_brand) REFERENCES brands_table(id_brand) ON DELETE CASCADE,
+            CONSTRAINT unique_vehicle UNIQUE (year_mod, id_model, id_brand)
         );
     """)
 
