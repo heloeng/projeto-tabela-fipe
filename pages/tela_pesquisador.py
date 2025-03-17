@@ -318,5 +318,5 @@ if page == "P4 - Sofia":
     
 # P5 - Vitor
 if page == "P5 - Vitor":
-    st.title("P5 - Victor")
+    st.title("P5 - Vitor")
     st.subheader("Testes")
