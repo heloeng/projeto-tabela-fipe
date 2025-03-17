@@ -4,6 +4,8 @@ from tela_inicial import get_user_role, get_user_info, get_credentials
 import psycopg2
 from datetime import datetime
 from decimal import Decimal
+import pandas as pd
+import numpy as np
 
 # Função para recuperar as lojas do banco de dados
 def get_lojas():
@@ -198,10 +200,10 @@ if credentials and not credentials.expired:
             st.sidebar.write(f"Usuário sem permissões")
             st.switch_page("tela_inicial.py")
 
-        if st.sidebar.button("Logout"):
-            st.session_state["credentials"] = None
-            st.session_state.pop("state", None)
-            st.switch_page("tela_inicial.py")
+    if st.sidebar.button("Logout"):
+        st.session_state["credentials"] = None
+        st.session_state.pop("state", None)
+        st.switch_page("tela_inicial.py")
 else:
     st.switch_page("tela_inicial.py")
     st.error("Você precisa estar logado como pesquisador para acessar esta página.")
@@ -311,12 +313,53 @@ if page == "P3 - Samuel":
     st.title("P3 - Samuel")
     st.subheader("Testes")
     
+
+
 # P4 - Sofia
 if page == "P4 - Sofia":
-    st.title("P4 - Sofia")
-    st.subheader("Testes")
+    st.title("Pesquisa de Inflação")
     
+
+
+    #inflation = get_inflation()
+
+    #Criação das selectboxes
+    st.subheader("Selecione o ano e mês de início")
+   
+    meses = {
+        "Janeiro": 1, "Fevereiro": 2, "Março": 3, "Abril": 4, "Maio": 5, "Junho": 6,
+        "Julho": 7, "Agosto": 8, "Setembro": 9, "Outubro": 10, "Novembro": 11, "Dezembro": 12
+    }
+    ano_init = st.number_input("Ano de Início", min_value=1960, max_value=2025, value=2024)
+    mes_init = st.selectbox("Selecione o mês de início", list(meses.keys()))
+    st.subheader("Selecione o ano e mês finais")
+    ano_final = st.number_input("Ano Final", min_value=1960, max_value=2025, value=2024)
+    mes_final = st.selectbox("Selecione o mês final", list(meses.keys()))
+    
+    
+    #Cálculo da inflação
+    # 
+    # Cálculos do gráfico
+    mes_num_init = meses[mes_init]
+    mes_num_final = meses[mes_final]
+    if ano_final == ano_init:
+        calc_meses = mes_num_final - mes_num_init
+        if calc_meses < 0:
+            st.write("Selecione um período válido de tempo")
+    # Exibindo o gráfico    
+    st.subheader("Cotação média mensal")
+    if mes_init == "Selecione o mês de início" or mes_final == "Selecione o mês final":
+        st.write("Selecione um período para exibir o gráfico")
+    else:
+        inflation = 5
+        chart_data = pd.DataFrame(np.random.randn(calc_meses,1), columns = [inflation])
+        st.line_chart(chart_data)
+
+
+
+
+
 # P5 - Vitor
 if page == "P5 - Vitor":
-    st.title("P5 - Vitor")
+    st.title("P5 - Victor")
     st.subheader("Testes")
