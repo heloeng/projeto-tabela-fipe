@@ -177,7 +177,7 @@ if 'lojas_registradas' not in st.session_state:
     st.session_state.lojas_registradas = get_lojas()  # Carrega as lojas do banco de dados
 
 st.sidebar.title("Menu")
-page = st.sidebar.radio("Navegação", ["Tela Inicial", "Área do Pesquisador", "Registrar Veículo"], key="navegacao_radio_P")
+page = st.sidebar.radio("Navegação", ["Tela Inicial", "Área do Pesquisador", "Registrar Veículo", "P1 - Heloiza", "P2 - João Marcelo", "P3 - Samuel", "P4 - Sofia", "P5 - Vitor"], key="navegacao_radio")
 
 st.sidebar.header("Acesso para colaboradores")
 credentials = get_credentials()
@@ -295,3 +295,28 @@ if page == "Registrar Veículo":
             register_vehicle(marca, modelo, ano, preco_base)
         else:
             st.warning("Preencha todos os campos para registrar um novo veículo.")
+
+# P1- Heloiza
+if page == "P1 - Heloiza":
+    st.title("P1 - Heloiza")
+    st.subheader("Testes")
+    
+# P2 - João Marcelo
+if page == "P2 - João Marcelo":
+    st.title("P2 - João Marcelo")
+    st.subheader("Testes")
+    
+# P3 - Samuel
+if page == "P3 - Samuel":
+    st.title("P3 - Samuel")
+    st.subheader("Testes")
+    
+# P4 - Sofia
+if page == "P4 - Sofia":
+    st.title("P4 - Sofia")
+    st.subheader("Testes")
+    
+# P5 - Vitor
+if page == "P5 - Vitor":
+    st.title("P5 - Victor")
+    st.subheader("Testes")
