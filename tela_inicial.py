@@ -258,7 +258,7 @@ if "code" in st.query_params:
 
 # Sidebar
 st.sidebar.title("Menu")
-page = st.sidebar.radio("Navegação", ["Tela Inicial"], key="navegacao_radio_I")
+page = st.sidebar.radio("Navegação", ["Tela Inicial", "Cotação Dolar"], key="navegacao_radio_I")
 
 # Autenticação na sidebar
 st.sidebar.header("Acesso para colaboradores")
@@ -323,6 +323,75 @@ if page == "Tela Inicial":
     if st.button("Pesquisar"):
         if modelo_selecionado and marca_selecionada and ano_selecionado:
             chave_veiculo = f"{marca_selecionada} - {modelo_selecionado} ({ano_selecionado})"
+
+            # Exibe o preço médio do veículo
+            avg_price = get_vehicle_price_avg(marca_selecionada, modelo_selecionado, ano_selecionado)
+            if avg_price is None:
+                avg_price = 0.0  # Se não houver preço médio, exibe 0,00
+
+            st.write(f"**Preço Médio do {marca_selecionada} - {modelo_selecionado} ({ano_selecionado}):** R$ {avg_price:.2f}.")# (calculado a partir de {count} registros).")
+        else:
+            st.warning("Por favor, selecione uma marca, um modelo e um ano/modelo.")
+
+# Tela de Cotação em Dólar
+if page == "Cotação Dolar":
+    st.title("Consulta de Cotação Média Mensal em Dólar para Preços de Veículos")
+    st.subheader("Preencha as informações sobre o veículo")
+
+    # Recupera as marcas diretamente do banco
+    marcas = get_brands()
+    marca_selecionada = st.selectbox("Marca", ["Escolha uma marca"] + marcas, key="marca_selecionada")
+
+    # Quando a marca for selecionada, carrega os modelos dessa marca
+    if marca_selecionada != "Escolha uma marca":
+        modelos = get_models_by_brand(marca_selecionada)
+        if modelos:  # Verifica se existem modelos para a marca selecionada
+            modelo_selecionado = st.selectbox("Modelo", ["Escolha um modelo"] + modelos, key="modelo_selecionado")
+        else:
+            st.warning("Não há modelos disponíveis para a marca selecionada.")  # Aviso caso não haja modelos
+            modelo_selecionado = None  # Caso não haja modelos, o campo é ocultado
+    else:
+        modelo_selecionado = st.selectbox("Modelo", ["Escolha um modelo"], key="modelo_selecionado")  # Caso nenhum modelo tenha sido selecionado
+        modelo_selecionado = None
+
+    # Lista de "Ano/Modelo" a ser exibida de acordo com o modelo
+    if modelo_selecionado and marca_selecionada:
+        ano_modelo = get_years_by_model(marca_selecionada, modelo_selecionado)
+    else:
+        ano_modelo = []
+    ano_selecionado = st.selectbox("Ano/Modelo", ["Escolha um ano/modelo"] + ano_modelo, key="ano_selecionado_inicial")
+    
+    if marca_selecionada != "Escolha uma marca" and modelo_selecionado != "Escolha um modelo" and ano_modelo == []:
+        st.warning("Não há Ano/Modelo registrado para este modelo.")
+
+    # Dropdown para meses
+    meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+    
+    # Dropdown para anos (podemos personalizar o intervalo)
+    anos = list(range(2000, 2031))  # Anos entre 2000 e 2030
+
+    st.subheader("Selecione o período")
+
+    # Criando as colunas
+    col1, col2 = st.columns(2)  # Duas colunas para lado a lado
+
+    with col1:
+        mes_inicio = st.selectbox("Mês de Início", meses)
+        mes_fim = st.selectbox("Mês de Fim", meses)
+
+    with col2:
+        ano_inicio = st.selectbox("Ano de Início", anos)
+        ano_fim = st.selectbox("Ano de Fim", anos)
+
+
+    # Verifica se todos os campos foram selecionados corretamente
+    if st.button("Pesquisar"):
+        if (ano_fim < ano_inicio) or ((ano_fim == ano_inicio) and (mes_fim < mes_inicio)):
+            st.warning("O período selecionado é inválido!")
+        elif marca_selecionada != "Escolha uma marca" and modelo_selecionado != "Escolha um modelo" and ano_selecionado != "Escolha um ano/modelo":
+            chave_veiculo = f"{marca_selecionada} - {modelo_selecionado} ({ano_selecionado})"
+
+            st.write(f"Cotação Média Mensal em Dólar do {marca_selecionada} - {modelo_selecionado} ({ano_selecionado}) de {mes_inicio} {ano_inicio} a {mes_fim} {ano_fim}:")
 
             # Exibe o preço médio do veículo
             avg_price = get_vehicle_price_avg(marca_selecionada, modelo_selecionado, ano_selecionado)
