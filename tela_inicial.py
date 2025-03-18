@@ -111,6 +111,85 @@ def get_vehicle_price_avg(brand_name, model_name, year):
         return result[0]#, result[1]  # Average price and count of records
     return None, 0
 
+    # Função para calcular o preço médio do veículo
+def get_vehicle_price_avg_month(brand_name, model_name, year_mod, MY):
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT AVG(register_table.price)
+        FROM vehicles_table
+        JOIN register_table ON vehicles_table.id_vehicle = register_table.id_vehicle
+        JOIN models_table ON vehicles_table.id_model = models_table.id_model
+        JOIN brands_table ON vehicles_table.id_brand = brands_table.id_brand
+        WHERE brands_table.name = %s AND models_table.name = %s AND vehicles_table.year_mod = %s AND TO_CHAR(register_table.reg_date, 'YYYY-MM') = %s;
+    """, (brand_name, model_name, year_mod, MY))
+    result = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    if result:
+        return result[0]#, result[1]  # Average price and count of records
+    return None, 0
+
+def get_dollar_value(year, month):
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT dollar
+        FROM dollar_table
+        WHERE year = %s AND month = %s;
+    """, (year, str(month)))
+    result = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    if result:
+        return result[0]
+    return None
+
+def mes_mm(mes):
+    if mes < 10:
+        mm = "0" + str(mes)
+    else:
+        mm = str(mes)
+    return mm
+
+def calc_dolar(brand_name, model_name, year_mod, mes_inicio, ano_inicio, mes_fim, ano_fim):
+    MYs = []
+    valores_dolar = []
+    valores_carros = []
+    for ano in range(ano_inicio, ano_fim + 1):
+        if ano_inicio == ano_fim:
+            for mes in range(mes_inicio, mes_fim + 1):
+                MY = str(ano) + "-" + mes_mm(mes)
+                MYs.append(MY)
+                valores_carros.append(round(float(get_vehicle_price_avg_month(brand_name, model_name, year_mod, MY)), 4))
+                valores_dolar.append(round(float(get_dollar_value(ano, mes)), 4))
+        elif ano == ano_inicio:
+            for mes in range(mes_inicio, 13):
+                MY = str(ano) + "-" + mes_mm(mes)
+                MYs.append(MY)
+                valores_carros.append(round(float(get_vehicle_price_avg_month(brand_name, model_name, year_mod, MY)), 4))
+                valores_dolar.append(round(float(get_dollar_value(ano, mes)), 4))
+        elif ano == ano_fim:
+            for mes in range(1, mes_fim + 1):
+                MY = str(ano) + "-" + mes_mm(mes)
+                MYs.append(MY)
+                valores_carros.append(round(float(get_vehicle_price_avg_month(brand_name, model_name, year_mod, MY)), 4))
+                valores_dolar.append(round(float(get_dollar_value(ano, mes)), 4))
+        else:
+            for mes in range(1, 13):
+                MY = str(ano) + "-" + mes_mm(mes)
+                MYs.append(MY)
+                valores_carros.append(round(float(get_vehicle_price_avg_month(brand_name, model_name, year_mod, MY)), 4))
+                valores_dolar.append(round(float(get_dollar_value(ano, mes)), 4))
+
+    valores_em_dolar = []
+    for i in range(len(MYs)):
+        carro_dolar = valores_carros[i]/valores_dolar[i]
+        valores_em_dolar.append(round(float(carro_dolar), 2))
+
+    return MYs, valores_em_dolar
+
+
 # Função para registrar o preço do veículo
 def register_vehicle_price(marca, modelo, loja_id, preco, ano):
     conn = create_connection()
@@ -368,7 +447,7 @@ if page == "Cotação Dolar":
     meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
     
     # Dropdown para anos (podemos personalizar o intervalo)
-    anos = list(range(2000, 2031))  # Anos entre 2000 e 2030
+    anos = list(range(2020, 2026))  # Anos entre 2000 e 2030
 
     st.subheader("Selecione o período")
 
@@ -386,18 +465,21 @@ if page == "Cotação Dolar":
 
     # Verifica se todos os campos foram selecionados corretamente
     if st.button("Pesquisar"):
-        if (ano_fim < ano_inicio) or ((ano_fim == ano_inicio) and (mes_fim < mes_inicio)):
+
+        mes_in = meses.index(mes_inicio) + 1
+        mes_fm = meses.index(mes_fim) + 1
+
+        if (ano_fim < ano_inicio) or ((ano_fim == ano_inicio) and (mes_fm < mes_in)):
             st.warning("O período selecionado é inválido!")
         elif marca_selecionada != "Escolha uma marca" and modelo_selecionado != "Escolha um modelo" and ano_selecionado != "Escolha um ano/modelo":
             chave_veiculo = f"{marca_selecionada} - {modelo_selecionado} ({ano_selecionado})"
 
+            eixo_x, eixo_y = calc_dolar(marca_selecionada, modelo_selecionado, ano_selecionado, mes_in, ano_inicio, mes_fm, ano_fim)
+            
             st.write(f"Cotação Média Mensal em Dólar do {marca_selecionada} - {modelo_selecionado} ({ano_selecionado}) de {mes_inicio} {ano_inicio} a {mes_fim} {ano_fim}:")
+            
+            st.warning(eixo_x)
+            st.warning(eixo_y)
 
-            # Exibe o preço médio do veículo
-            avg_price = get_vehicle_price_avg(marca_selecionada, modelo_selecionado, ano_selecionado)
-            if avg_price is None:
-                avg_price = 0.0  # Se não houver preço médio, exibe 0,00
-
-            st.write(f"**Preço Médio do {marca_selecionada} - {modelo_selecionado} ({ano_selecionado}):** R$ {avg_price:.2f}.")# (calculado a partir de {count} registros).")
         else:
             st.warning("Por favor, selecione uma marca, um modelo e um ano/modelo.")
