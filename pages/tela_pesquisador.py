@@ -3,15 +3,105 @@ from databases.db_connection import create_connection
 from tela_inicial import get_user_role
 from tela_inicial import get_user_info
 from tela_inicial import get_credentials
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import pandas as pd
 import psycopg2
 from datetime import datetime
+
+# Função para recuperar as cadeias de lojas
+def get_chains():
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id_chain, chain_name FROM store_chains_table")
+    chains = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return [chain[1] for chain in chains]
+
+# Função para associar loja a cadeia
+def associate_store_to_chain(store_id, chain_name):
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id_chain FROM store_chains_table WHERE chain_name = %s", (chain_name,))
+    chain_id = cursor.fetchone()
+    
+    if chain_id is None:
+        st.error(f"Cadeia de loja '{chain_name}' não encontrada.")
+        return
+    
+    # Verificando se a loja já está associada à cadeia
+    cursor.execute("SELECT * FROM store_chains_table WHERE store_id = %s AND chain_name = %s", (store_id, chain_name))
+    if cursor.fetchone():
+        st.warning(f"A loja '{store_id}' já está associada à cadeia '{chain_name}'.")
+        return
+    
+    cursor.execute("INSERT INTO store_chains_table (store_id, chain_name) VALUES (%s, %s)", (store_id, chain_name))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    st.success(f"Loja associada à cadeia '{chain_name}' com sucesso!")
+    
+    # Função para exibir a variação do preço médio mensal
+def get_price_variation_by_month(chain_name, start_date, end_date):
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT v.avg_price, v.calc_date
+    FROM vehicles_table v
+    JOIN stores_table s ON v.store_id = s.id_store
+    LEFT JOIN store_chains_table sc ON s.id_store = sc.store_id
+    WHERE sc.chain_name = %s
+    AND v.calc_date BETWEEN %s AND %s
+    ORDER BY v.calc_date;
+""", (chain_name, start_date, end_date))
+    
+    prices = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return prices
+
+# Função para mostrar o gráfico de variação de preços com linha conectando os pontos
+def show_price_variation_graph(prices):
+    if not prices:
+        st.warning("Não há dados de preço para o intervalo selecionado.")
+        return
+    
+    # Criação do DataFrame com preços e datas
+    df = pd.DataFrame(prices, columns=["price", "date"])
+    df['date'] = pd.to_datetime(df['date'])  # Garantir que as datas sejam do tipo datetime
+    df.sort_values(by='date', inplace=True)  # Garantir que os dados estão ordenados por data
+
+    # Criar o gráfico
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Plotando a linha conectando os pontos com preço
+    ax.plot(df['date'], df['price'], marker='o', linestyle='-', color='b', label="Variação de Preço")
+
+    # Título e rótulos
+    ax.set_title('Variação de Cotação de Preço', fontsize=16)
+    ax.set_xlabel('Data', fontsize=12)
+    ax.set_ylabel('Preço Médio (R$)', fontsize=12)
+    
+    # Formatação do eixo X para mostrar mês/ano
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d %b %Y'))
+    ax.xaxis.set_major_locator(mdates.MonthLocator())
+    
+    # Rótulos do eixo X
+    plt.xticks(rotation=45)
+
+    # Legenda
+    ax.legend()
+
+    # Exibição do gráfico
+    st.pyplot(fig)
 
 # Função para recuperar as lojas do banco de dados
 def get_lojas():
     conn = create_connection()
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT id_store, name, street, number, neighborhood, city, state, zip_code
+    SELECT id_store, name, street, number, neighborhood, city, state, cep
     FROM stores_table
     """)
     lojas = cursor.fetchall()
@@ -181,7 +271,7 @@ if 'lojas_registradas' not in st.session_state:
     st.session_state.lojas_registradas = get_lojas()  # Carrega as lojas do banco de dados
 
 st.sidebar.title("Menu")
-page = st.sidebar.radio("Navegação", ["Tela Inicial", "Área do Pesquisador", "Registrar Veículo"], key="navegacao_radio")
+page = st.sidebar.radio("Navegação", ["Tela Inicial", "Área do Pesquisador", "Registrar Veículo", "P1 - Heloiza", "P2 - João Marcelo", "P3 - Samuel", "P4 - Sofia", "P5 - Vitor"], key="navegacao_radio")
 
 st.sidebar.header("Acesso para colaboradores")
 credentials = get_credentials()
@@ -291,3 +381,113 @@ if page == "Registrar Veículo":
             register_vehicle(marca, modelo, ano, preco_base)
         else:
             st.warning("Preencha todos os campos para registrar um novo veículo.")
+            
+# P1- Heloiza
+if page == "P1 - Heloiza":
+    st.title("P1 - Heloiza")
+    st.subheader("Testes")
+    
+# P2 - João Marcelo
+if page == "P2 - João Marcelo":
+    st.title("P2 - João Marcelo")
+    st.subheader("Testes")
+    
+# P3 - Samuel
+if page == "P3 - Samuel":
+    st.title("P3 - Samuel")
+    st.subheader("Testes")
+
+    # Consulta Gráfica da Variação de Cotação Média Mensal
+    st.header("Consulta Gráfica de Variação de Preço")
+
+    # Selecione a cadeia de loja
+    chains = list(set(get_chains()))  # Remover duplicatas
+    selected_chain = st.selectbox("Selecione uma Cadeia de Loja", ["Escolha uma cadeia"] + chains)
+
+    if selected_chain != "Escolha uma cadeia":
+        # Selecione o período
+        start_date = st.date_input("Data Inicial", min_value=datetime(2000, 1, 1))
+        end_date = st.date_input("Data Final", min_value=datetime(2000, 1, 1))
+
+        if start_date and end_date and start_date <= end_date:
+            if st.button("Consultar Variação"):
+                prices = get_price_variation_by_month(selected_chain, start_date, end_date)
+                show_price_variation_graph(prices)
+        else:
+            st.warning("Selecione um período válido.")
+
+    # Cadastro de Cadeia de Loja
+    st.header("Cadastro de Cadeia de Loja")
+    chain_name = st.text_input("Nome da Cadeia de Loja")
+    
+    if st.button("Cadastrar Cadeia"):
+        if chain_name:
+            try:
+                conn = create_connection()
+                cursor = conn.cursor()
+
+                # Buscar o maior id_store para gerar o próximo
+                cursor.execute("SELECT MAX(id_store) FROM stores_table")
+                max_id = cursor.fetchone()[0]
+                new_store_id = max_id + 1 if max_id is not None else 1
+
+                # Adicionar um nome fictício para a loja, caso não tenha dados
+                store_name = "Loja " + str(new_store_id)
+                store_city = "Cidade Fictícia"
+                store_state = "Estado Fictício"
+
+                # Inserir dados na tabela stores_table (incluindo nome da loja)
+                cursor.execute("""
+                    INSERT INTO stores_table (id_store, name, city, state)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (id_store) DO NOTHING
+                """, (new_store_id, store_name, store_city, store_state))
+
+                # Inserir a cadeia de loja na tabela store_chains_table
+                cursor.execute("""
+                    INSERT INTO store_chains_table (store_id, chain_name)
+                    VALUES (%s, %s)
+                """, (new_store_id, chain_name))
+
+                # Confirmar a transação no banco de dados
+                conn.commit()
+
+                cursor.close()
+                conn.close()
+
+                st.success(f"Cadeia de loja '{chain_name}' cadastrada com sucesso!")
+            except Exception as e:
+                # Reverter transações em caso de erro
+                conn.rollback()
+                st.error(f"Erro ao cadastrar a cadeia de loja: {str(e)}")
+        else:
+            st.warning("Preencha o nome da cadeia.")
+
+    # Associação de loja a cadeia
+    st.header("Associação de Loja a Cadeia")
+    
+    # Verifica se há lojas registradas em st.session_state
+    if 'lojas_registradas' in st.session_state:
+        loja_id = st.selectbox("Selecione a Loja", list(set([loja['nome'] for loja in st.session_state.lojas_registradas])) )  # Remover duplicatas
+        chain_to_associate = st.selectbox("Selecione a Cadeia", chains)
+
+        if st.button("Associar Loja à Cadeia"):
+            try:
+                # Busca o ID da loja a partir do nome
+                store_id = next(loja['id'] for loja in st.session_state.lojas_registradas if loja['nome'] == loja_id)
+                # Chama a função para associar loja à cadeia
+                associate_store_to_chain(store_id, chain_to_associate)
+            except Exception as e:
+                st.error(f"Erro ao associar loja à cadeia: {e}")
+    else:
+        st.warning("Não há lojas registradas para associar.")
+    
+# P4 - Sofia
+if page == "P4 - Sofia":
+    st.title("P4 - Sofia")
+    st.subheader("Testes")
+    
+# P5 - Vitor
+if page == "P5 - Vitor":
+    st.title("P5 - Vitor")
+    st.subheader("Testes")
