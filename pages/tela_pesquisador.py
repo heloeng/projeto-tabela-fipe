@@ -4,6 +4,8 @@ from tela_inicial import get_user_role, get_user_info, get_credentials
 import psycopg2
 from datetime import datetime
 from decimal import Decimal
+import re
+import pandas as pd
 
 # Função para recuperar as lojas do banco de dados
 def get_lojas():
@@ -172,6 +174,32 @@ def get_vehicle_price_avg(brand_name, model_name, year):
         return result[0], result[1]  # Average price and count of records
     return None, 0
 
+# Função para buscar principais dados da tabela regiser_table
+def get_register_data_by_plate():
+    with create_connection() as conn:
+        query = """
+            SELECT r.plate, r.price, r.reg_date, s.name AS store_name
+            FROM register_table r
+            JOIN stores_table s ON r.id_store = s.id_store
+            ORDER BY r.reg_date
+        """
+        df = pd.read_sql(query, conn)
+    return df
+
+def get_register_data_by_vehicle(brand_name, model_name, year):
+    with create_connection() as conn:
+        query = """
+            SELECT r.plate, r.year_man, r.price, r.reg_date, s.name AS store_name
+            FROM register_table r
+            JOIN stores_table s ON r.id_store = s.id_store
+            JOIN vehicles_table v ON r.id_vehicle = v.id_vehicle
+            JOIN models_table m ON v.id_model = m.id_model
+            JOIN brands_table b ON m.id_brand = b.id_brand
+            WHERE b.name = %s AND m.name = %s AND v.year_mod = %s
+            ORDER BY r.reg_date
+        """
+        df = pd.read_sql(query, conn, params=(brand_name, model_name, year))
+    return df
 # Armazenamento de informações no estado da sessão
 if 'lojas_registradas' not in st.session_state:
     st.session_state.lojas_registradas = get_lojas()  # Carrega as lojas do banco de dados
@@ -303,8 +331,150 @@ if page == "P1 - Heloiza":
     
 # P2 - João Marcelo
 if page == "P2 - João Marcelo":
-    st.title("P2 - João Marcelo")
-    st.subheader("Testes")
+    st.title("Histórico de cotações")
+    st.subheader("Consulta de histórico de cotações por veículo.")
+
+    # Checkbox para alternar entre pesquisa por placa ou marca-modelo-ano
+    toggle_plate_search= st.checkbox("Pesquisar carro por placa", key="pesquisar_por_placa", help="Habilite para pesquisar um carro epecífico através da placa. Deixe sem marcar caso queira pesquisar pelo arranjo marca-modelo-ano")
+
+    # Inicializar variáveis no session_state se ainda não existirem
+    if 'search_params' not in st.session_state:
+        st.session_state.search_params = {
+            'marca': None,
+            'modelo': None,
+            'ano': None,
+            'placa': None,
+            'toggle_plate_search': False
+        }
+    
+    if not toggle_plate_search:
+        # Pesquisa por marca-modelo-ano
+        marcas = get_brands()
+        marca_selecionada = st.selectbox("Marca", ["Escolha uma marca"] + marcas, key="marca_selecionada")
+
+        if marca_selecionada != "Escolha uma marca":
+            modelos = get_models_by_brand(marca_selecionada)
+            if modelos:
+                modelo_selecionado = st.selectbox("Modelo", ["Escolha um modelo"] + modelos, key="modelo_selecionado")
+            else:
+                st.warning("Não há modelos disponíveis para a marca selecionada.")
+                modelo_selecionado = None
+        else:
+            modelo_selecionado = None
+
+        if modelo_selecionado and modelo_selecionado != "Escolha um modelo":
+            anos_modelos = get_years_by_model(marca_selecionada, modelo_selecionado)
+            if anos_modelos:
+                ano_modelo_selecionado = st.selectbox("Ano/Modelo", ["Escolha um ano/modelo"] + anos_modelos, key="ano_modelo_selecionado")
+            else:
+                ano_modelo_selecionado = None
+        else:
+            ano_modelo_selecionado = None
+
+        placa_selecionada = None
+    else:
+        # Pesquisa por placa
+        placa_selecionada = st.text_input(
+            "Placa do veículo (ex.: ABC1234 ou ABC1D34)",
+            max_chars=7,
+            key="placa_selecionada"
+        )
+        marca_selecionada = None
+        modelo_selecionado = None
+        ano_modelo_selecionado = None
+
+    # Botão "Pesquisar" para salvar os parâmetros no session_state
+    if st.button("Pesquisar"):
+        if toggle_plate_search:
+            if placa_selecionada and len(placa_selecionada.strip()) > 0:
+                placa_selecionada = placa_selecionada.upper()
+                if len(placa_selecionada) != 7:
+                    st.warning("A placa deve ter exatamente 7 caracteres (ex.: ABC1234 ou ABC1D23).")
+                elif not re.match(r'^([A-Z]{3}\d{4}|[A-Z]{3}\d[A-Z]\d{2})$', placa_selecionada):
+                    st.warning("A placa deve seguir o padrão tradicional (ex.: ABC1234) ou Mercosul (ex.: ABC1D23).")
+                else:
+                    st.session_state.search_params = {
+                        'marca': None,
+                        'modelo': None,
+                        'ano': None,
+                        'placa': placa_selecionada,
+                        'toggle_plate_search': True
+                    }
+            else:
+                st.warning("Por favor, informe uma placa válida.")
+        else:
+            if marca_selecionada != "Escolha uma marca" and modelo_selecionado and modelo_selecionado != "Escolha um modelo" and ano_modelo_selecionado and ano_modelo_selecionado != "Escolha um ano/modelo":
+                st.session_state.search_params = {
+                    'marca': marca_selecionada,
+                    'modelo': modelo_selecionado,
+                    'ano': ano_modelo_selecionado,
+                    'placa': None,
+                    'toggle_plate_search': False
+                }
+            else:
+                st.warning("Por favor, selecione todos os campos antes de pesquisar.")
+
+    # Renderizar o gráfico com base nos parâmetros salvos no session_state
+    if st.session_state.search_params['toggle_plate_search']:
+        st.subheader("Histórico de Preços por placa e loja")
+        df = get_register_data_by_plate()
+        if not df.empty:
+            df = df[df['plate'] == st.session_state.search_params['placa']]  # Filtrar pela placa salva
+            if not df.empty:
+                available_stores = sorted(df['store_name'].unique())
+                filtered_stores = st.multiselect("Filtrar por Loja", available_stores, default=available_stores, key="filter_stores_plate")
+                if filtered_stores:
+                    df = df[df['store_name'].isin(filtered_stores)]
+                df_pivot = df.pivot_table(index='reg_date', columns='store_name', values='price', aggfunc='mean')
+                df_pivot = df_pivot.fillna(method='ffill')
+                df_pivot.index.name = "Data de Registro"
+
+                st.write("Foram encontradas um total de ", len(df), " consultas para a seleção. De ", df.iloc[0, 2], " a ", df.iloc[-1, 2])
+                st.line_chart(df_pivot, use_container_width=True)
+                st.write("Dados exibidos no gráfico:")
+                st.dataframe(df)
+            else:
+                st.warning(f"Nenhum dado disponível para a placa {st.session_state.search_params['placa']}.")
+        else:
+            st.warning("Nenhum dado disponível para exibição no gráfico.")
+    elif (st.session_state.search_params['marca'] and 
+          st.session_state.search_params['modelo'] and 
+          st.session_state.search_params['ano']):
+        st.subheader("Histórico de Preços por Loja")
+        df = get_register_data_by_vehicle(
+            st.session_state.search_params['marca'],
+            st.session_state.search_params['modelo'],
+            st.session_state.search_params['ano']
+        )
+        if not df.empty:
+            available_stores = sorted(df['store_name'].unique())
+            filtered_stores = st.multiselect("Filtrar por Loja", available_stores, default=available_stores, key="filter_stores_vehicle")
+            if filtered_stores:
+                df = df[df['store_name'].isin(filtered_stores)]
+            available_plates = sorted(df['plate'].unique())
+            filtered_plates = st.multiselect("Filtrar por Placa", available_plates, default=available_plates, key="filter_plates_vehicle")
+            if filtered_plates:
+                df = df[df['plate'].isin(filtered_plates)]
+            df_pivot = df.pivot_table(index='reg_date', columns='store_name', values='price', aggfunc='mean')
+            df_pivot = df_pivot.fillna(method='ffill')
+            st.line_chart(df_pivot, use_container_width=True)
+            st.write(f"Dados do gráfico para {st.session_state.search_params['marca']} {st.session_state.search_params['modelo']} {st.session_state.search_params['ano']}:")
+            st.dataframe(df_pivot)
+        else:
+            st.warning(f"Nenhum dado disponível para {st.session_state.search_params['marca']} {st.session_state.search_params['modelo']} {st.session_state.search_params['ano']}.")
+    else:
+        st.info("Por favor, clique em 'Pesquisar' para exibir o gráfico.")
+
+    # Botão para limpar pesquisa
+    if st.button("Limpar Pesquisa :wastebasket:"):
+        st.session_state.search_params = {
+        'marca': None,
+        'modelo': None,
+        'ano': None,
+        'placa': None,
+        'toggle_plate_search': False
+    }
+
     
 # P3 - Samuel
 if page == "P3 - Samuel":
