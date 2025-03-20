@@ -7,6 +7,7 @@ from databases.db_connection import create_connection
 import psycopg2
 from datetime import datetime
 import main
+import plotly.express as px
 
 # Configurações do Google OAuth
 SCOPES = ["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"]
@@ -188,6 +189,30 @@ def calc_dolar(brand_name, model_name, year_mod, mes_inicio, ano_inicio, mes_fim
         valores_em_dolar.append(round(float(carro_dolar), 2))
 
     return MYs, valores_em_dolar
+
+def formatar_meses(lista_meses):
+    return [datetime.strptime(mes, "%Y-%m").strftime("%b-%Y") for mes in lista_meses]
+
+def dollar_graf():
+        mes_in = meses.index(mes_inicio) + 1
+        mes_fm = meses.index(mes_fim) + 1
+
+        if (ano_fim < ano_inicio) or ((ano_fim == ano_inicio) and (mes_fm < mes_in)):
+            st.warning("O período selecionado é inválido!")
+        elif marca_selecionada != "Escolha uma marca" and modelo_selecionado != "Escolha um modelo" and ano_selecionado != "Escolha um ano/modelo":
+            chave_veiculo = f"{marca_selecionada} - {modelo_selecionado} ({ano_selecionado})"
+
+            eixo_x, eixo_y = calc_dolar(marca_selecionada, modelo_selecionado, ano_selecionado, mes_in, ano_inicio, mes_fm, ano_fim)
+
+            eixo_x2 = formatar_meses(eixo_x)
+            
+            fig = px.line(x=eixo_x2, y=eixo_y, markers=True, title=f"Cotação Média Mensal em Dólar do {marca_selecionada} - {modelo_selecionado} ({ano_selecionado}) de {mes_inicio} {ano_inicio} a {mes_fim} {ano_fim}")
+            fig.update_layout(yaxis_tickformat="$,.2f", xaxis_title="Mês", yaxis_title="Valor em Dólar [US$]")
+            
+            st.plotly_chart(fig)
+
+        else:
+            st.warning("Por favor, selecione uma marca, um modelo e um ano/modelo.")
 
 
 # Função para registrar o preço do veículo
@@ -419,13 +444,13 @@ if page == "Cotação Dolar":
 
     # Recupera as marcas diretamente do banco
     marcas = get_brands()
-    marca_selecionada = st.selectbox("Marca", ["Escolha uma marca"] + marcas, key="marca_selecionada")
+    marca_selecionada = st.selectbox("Marca", ["Escolha uma marca"] + sorted(marcas), key="marca_selecionada")
 
     # Quando a marca for selecionada, carrega os modelos dessa marca
     if marca_selecionada != "Escolha uma marca":
         modelos = get_models_by_brand(marca_selecionada)
         if modelos:  # Verifica se existem modelos para a marca selecionada
-            modelo_selecionado = st.selectbox("Modelo", ["Escolha um modelo"] + modelos, key="modelo_selecionado")
+            modelo_selecionado = st.selectbox("Modelo", ["Escolha um modelo"] + sorted(modelos), key="modelo_selecionado")
         else:
             st.warning("Não há modelos disponíveis para a marca selecionada.")  # Aviso caso não haja modelos
             modelo_selecionado = None  # Caso não haja modelos, o campo é ocultado
@@ -438,7 +463,7 @@ if page == "Cotação Dolar":
         ano_modelo = get_years_by_model(marca_selecionada, modelo_selecionado)
     else:
         ano_modelo = []
-    ano_selecionado = st.selectbox("Ano/Modelo", ["Escolha um ano/modelo"] + ano_modelo, key="ano_selecionado_inicial")
+    ano_selecionado = st.selectbox("Ano/Modelo", ["Escolha um ano/modelo"] + sorted(ano_modelo), key="ano_selecionado_inicial")
     
     if marca_selecionada != "Escolha uma marca" and modelo_selecionado != "Escolha um modelo" and ano_modelo == []:
         st.warning("Não há Ano/Modelo registrado para este modelo.")
@@ -466,20 +491,5 @@ if page == "Cotação Dolar":
     # Verifica se todos os campos foram selecionados corretamente
     if st.button("Pesquisar"):
 
-        mes_in = meses.index(mes_inicio) + 1
-        mes_fm = meses.index(mes_fim) + 1
+        dollar_graf()
 
-        if (ano_fim < ano_inicio) or ((ano_fim == ano_inicio) and (mes_fm < mes_in)):
-            st.warning("O período selecionado é inválido!")
-        elif marca_selecionada != "Escolha uma marca" and modelo_selecionado != "Escolha um modelo" and ano_selecionado != "Escolha um ano/modelo":
-            chave_veiculo = f"{marca_selecionada} - {modelo_selecionado} ({ano_selecionado})"
-
-            eixo_x, eixo_y = calc_dolar(marca_selecionada, modelo_selecionado, ano_selecionado, mes_in, ano_inicio, mes_fm, ano_fim)
-            
-            st.write(f"Cotação Média Mensal em Dólar do {marca_selecionada} - {modelo_selecionado} ({ano_selecionado}) de {mes_inicio} {ano_inicio} a {mes_fim} {ano_fim}:")
-            
-            st.warning(eixo_x)
-            st.warning(eixo_y)
-
-        else:
-            st.warning("Por favor, selecione uma marca, um modelo e um ano/modelo.")
