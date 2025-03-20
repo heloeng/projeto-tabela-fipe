@@ -7,6 +7,11 @@ from databases.db_connection import create_connection
 import psycopg2
 from datetime import datetime
 import main
+from decimal import Decimal
+import pandas as pd
+import numpy as np
+import ipeadatapy as ipea
+from ipea import calcular_precos_ao_longo_tempo
 
 # Configurações do Google OAuth
 SCOPES = ["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"]
@@ -208,7 +213,7 @@ def process_callback():
     stored_state = st.session_state.get("state")
     
     if not stored_state:
-        st.warning("State não encontrado. Usando state da URL como fallback.")
+        #st.warning("State não encontrado. Usando state da URL como fallback.")
         stored_state = state_from_url
         st.session_state["state"] = stored_state
     
@@ -258,7 +263,7 @@ if "code" in st.query_params:
 
 # Sidebar
 st.sidebar.title("Menu")
-page = st.sidebar.radio("Navegação", ["Tela Inicial"], key="navegacao_radio_I")
+page = st.sidebar.radio("Navegação", ["Tela Inicial", "Pesquisa de Inflação"], key="navegacao_radio_I")
 
 # Autenticação na sidebar
 st.sidebar.header("Acesso para colaboradores")
@@ -332,3 +337,98 @@ if page == "Tela Inicial":
             st.write(f"**Preço Médio do {marca_selecionada} - {modelo_selecionado} ({ano_selecionado}):** R$ {avg_price:.2f}.")# (calculado a partir de {count} registros).")
         else:
             st.warning("Por favor, selecione uma marca, um modelo e um ano/modelo.")
+
+# P4 - Sofia
+if page == "Pesquisa de Inflação":
+    st.title("Pesquisa de Inflação")
+    
+    #inflation = get_inflation()
+    #Selecionando o carro
+    st.header("Selecione o carro que deseja pesquisar")
+
+    # Recupera as marcas diretamente do banco
+    marcas = get_brands()
+    marca_selecionada = st.selectbox("Marca", ["Escolha uma marca"] + marcas, key="marca_selecionada")
+
+    # Quando a marca for selecionada, carrega os modelos dessa marca
+    if marca_selecionada != "Escolha uma marca":
+        modelos = get_models_by_brand(marca_selecionada)
+        if modelos:  # Verifica se existem modelos para a marca selecionada
+            modelo_selecionado = st.selectbox("Modelo", ["Escolha um modelo"] + modelos, key="modelo_selecionado")
+        else:
+            st.warning("Não há modelos disponíveis para a marca selecionada.")  # Aviso caso não haja modelos
+            modelo_selecionado = None  # Caso não haja modelos, o campo é ocultado
+    else:
+        modelo_selecionado = None  # Caso nenhum modelo tenha sido selecionado
+
+    # Lista de "Ano/Modelo" a ser exibida de acordo com o modelo
+    if modelo_selecionado and marca_selecionada:
+        ano_modelo = get_years_by_model(marca_selecionada, modelo_selecionado)
+    else:
+        ano_modelo = []
+    ano_selecionado = st.selectbox("Ano/Modelo", ["Escolha um ano/modelo"] + ano_modelo, key="ano_selecionado_inicial")
+
+
+    #Criação das selectboxes
+    st.header("Selecione o ano e mês de início")
+   
+    meses = {
+        "Janeiro":1, "Fevereiro": 2, "Março": 3, "Abril": 4, "Maio": 5, "Junho": 6,
+        "Julho": 7, "Agosto": 8, "Setembro": 9, "Outubro": 10, "Novembro": 11, "Dezembro": 12
+    }
+    ano_init = st.number_input("Ano de Início", min_value=2001, max_value=2025, value=2024)
+    mes_init_nome = st.selectbox("Selecione o mês de início", list(meses.keys()))
+    st.header("Selecione o ano e mês finais")
+    ano_final = st.number_input("Ano Final", min_value=1960, max_value=2025, value=2024)
+    if ano_final == 2025:
+        mes_final_nome = st.selectbox("Selecione o mês final", "Janeiro")
+    else:
+        mes_final_nome = st.selectbox("Selecione o mês final", list(meses.keys()))
+
+    # Converter nomes dos meses para números
+    mes_init = meses[mes_init_nome]
+    mes_final = meses[mes_final_nome]   
+    
+    #Tratamento de inputs
+    data_atual = datetime(ano_final, mes_final, 1)
+    data_inicial = datetime(ano_init, mes_init, 1)
+
+    if data_atual< data_inicial:
+        st.error("Selecione um período válido de tempo")
+
+
+    pesquisa = st.button("Pesquisar")
+  
+
+    # Exibindo o gráfico    
+    
+    st.header("Cotação média mensal")
+    st.subheader("Os preços exibidos são baseados na cotação atual do veículo")
+     # Verifica se todos os campos foram selecionados corretamente
+    if pesquisa:
+        if modelo_selecionado and marca_selecionada and ano_selecionado:
+            chave_veiculo = f"{marca_selecionada} - {modelo_selecionado} ({ano_selecionado})"
+
+            # Exibe o preço médio do veículo
+            avg_price = get_vehicle_price_avg(marca_selecionada, modelo_selecionado, ano_selecionado)
+            if avg_price is None:
+                avg_price = 0.0  # Se não houver preço médio, exibe 0,00
+            avg_price_show = float(avg_price)
+  
+            st.write(f"**Preço médio atual do {marca_selecionada} - {modelo_selecionado} ({ano_selecionado}):** R$ {avg_price_show:.2f}.")
+        
+            #Cálculo da inflação
+    
+            datas, precos = calcular_precos_ao_longo_tempo(avg_price, mes_init, ano_init, mes_final, ano_final)
+            diff_meses = (ano_final - ano_init)*12 + (mes_final - mes_init)+1
+            chart_datas = datas[-diff_meses:]
+            chart_precos = precos[-diff_meses:]
+            st.write(f"**O preço estimado do {marca_selecionada} - {modelo_selecionado} ({ano_selecionado}) para {mes_init_nome} de {ano_init} é de:** R$ {precos[-1]:.2f}.")
+            st.write('**Variação do Preço do Carro ao Longo do Tempo**')
+            chart_data = pd.DataFrame(chart_precos,chart_datas, columns=["Preço"])
+            st.line_chart(data=chart_data,x_label="Data", y_label="Preços")
+      
+        else:
+            st.warning("Por favor, selecione uma marca, um modelo e um ano/modelo.")
+    if mes_init == "Selecione o mês de início" or mes_final == "Selecione o mês final":
+        st.write("Selecione um período para exibir o gráfico")
