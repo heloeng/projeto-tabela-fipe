@@ -197,7 +197,12 @@ def dollar_graf():
         mes_in = meses.index(mes_inicio) + 1
         mes_fm = meses.index(mes_fim) + 1
 
+        ano_atual = datetime.now().year
+        mes_atual = datetime.now().month
+
         if (ano_fim < ano_inicio) or ((ano_fim == ano_inicio) and (mes_fm < mes_in)):
+            st.warning("O período selecionado é inválido!")
+        elif ano_fim == ano_atual and mes_fm > mes_atual:
             st.warning("O período selecionado é inválido!")
         elif marca_selecionada != "Escolha uma marca" and modelo_selecionado != "Escolha um modelo" and ano_selecionado != "Escolha um ano/modelo":
             chave_veiculo = f"{marca_selecionada} - {modelo_selecionado} ({ano_selecionado})"
