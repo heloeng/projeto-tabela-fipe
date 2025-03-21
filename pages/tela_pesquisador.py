@@ -33,7 +33,7 @@ def associate_store_to_chain(store_id, chain_name):
     # Verificando se a loja já está associada à cadeia
     cursor.execute("SELECT * FROM store_chains_table WHERE store_id = %s AND chain_name = %s", (store_id, chain_name))
     if cursor.fetchone():
-        st.warning(f"A loja '{store_id}' já está associada à cadeia '{chain_name}'.")
+        st.warning(f"Esta loja já está associada à cadeia '{chain_name}'.")
         return
     
     cursor.execute("INSERT INTO store_chains_table (store_id, chain_name) VALUES (%s, %s)", (store_id, chain_name))
