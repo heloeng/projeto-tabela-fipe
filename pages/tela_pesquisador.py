@@ -9,6 +9,28 @@ import pandas as pd
 import psycopg2
 from datetime import datetime
 
+# Função para criar a tabela store_chains_table
+def create_store_chains_table():
+    conn = create_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS store_chains_table (
+            id_chain SERIAL PRIMARY KEY,
+            chain_name VARCHAR(255) NOT NULL,
+            store_id INTEGER NOT NULL,
+            FOREIGN KEY (store_id) REFERENCES stores_table(id_store)
+        );
+        """)
+        conn.commit()
+        st.success("Tabela 'store_chains_table' criada com sucesso!")
+    except Exception as e:
+        conn.rollback()
+        st.error(f"Erro ao criar a tabela: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
 # Função para recuperar as cadeias de lojas
 def get_chains():
     conn = create_connection()
