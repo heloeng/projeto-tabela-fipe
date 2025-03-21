@@ -462,7 +462,7 @@ if credentials and not credentials.expired:
             st.sidebar.markdown(f"Logado como **{user_role}**")
             # Redirecionamento para tela_pesquisador.py se o role for "pesquisador" ou tela_gestor.py se o role for "gestor" 
             if user_role == "pesquisador":
-                st.switch_page("pages/tela_pesquisador_no_auth.py")
+                st.switch_page("pages/tela_pesquisador.py")
             elif user_role == "gestor":
                 st.switch_page("pages/tela_gestor.py")
         else:
