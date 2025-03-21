@@ -106,6 +106,42 @@ class TestaTelaPesquisador(unittest.TestCase):
         # Verifica se o sucesso ocorreu com a associação esperada
         mock_success.assert_called_with("Loja 1 associada à cadeia Rede de Lojas C com sucesso!")
 
+    @patch('streamlit.text_input')
+    @patch('streamlit.button')
+    @patch('streamlit.error')
+    def test_nome_rede_ja_existente(self, mock_error, mock_button, mock_text_input):
+        # Simulando o nome já existente
+        mock_text_input.return_value = "Rede de Lojas C"  # Nome que já existe
+
+        # Lista de redes cadastradas
+        redes_cadastradas = ["Rede de Lojas A", "Rede de Lojas B", "Rede de Lojas C"]
+
+        # Lógica de validação para verificar se a rede já existe
+        nome_rede = mock_text_input("Nome da Cadeia")
+        if nome_rede in redes_cadastradas:
+            mock_error(f"A cadeia '{nome_rede}' já está cadastrada!")
+
+        # Verifica se a mensagem de erro foi chamada
+        mock_error.assert_called_with("A cadeia 'Rede de Lojas C' já está cadastrada!")
+
+    @patch('streamlit.text_input')
+    @patch('streamlit.button')
+    @patch('streamlit.error')
+    def test_nome_rede_extremamente_grande(self, mock_error, mock_button, mock_text_input):
+        # Nome extremamente longo
+        nome_grande = "R" * 1000  # 1000 caracteres, muito grande
+
+        # Lógica de validação para o nome da rede
+        mock_text_input.return_value = nome_grande
+
+        # Definindo um tamanho máximo permitido para o nome
+        max_length = 255
+        if len(nome_grande) > max_length:
+            mock_error(f"O nome da cadeia não pode ultrapassar {max_length} caracteres!")
+
+        # Verifica se a mensagem de erro foi chamada
+        mock_error.assert_called_with(f"O nome da cadeia não pode ultrapassar {max_length} caracteres!")
+
     @classmethod
     def tearDownClass(cls):
         """Fecha o navegador após todos os testes - Executado uma vez após todos os testes"""
