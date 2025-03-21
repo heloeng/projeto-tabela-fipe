@@ -13,6 +13,7 @@ import matplotlib.dates as mdates
 from datetime import datetime
 from decimal import Decimal
 import re
+import time
 import pandas as pd
 
 
@@ -301,7 +302,7 @@ if 'lojas_registradas' not in st.session_state:
     st.session_state.lojas_registradas = get_lojas()  # Carrega as lojas do banco de dados
 
 st.sidebar.title("Menu")
-page = st.sidebar.radio("Navegação", ["Tela Inicial", "Área do Pesquisador", "Registrar Veículo", "P1 - Heloiza", "Consulta histórico de cotações", "P3 - Samuel", "P4 - Sofia", "P5 - Vitor"], key="navegacao_radio")
+page = st.sidebar.radio("Navegação", ["Tela Inicial", "Área do Pesquisador", "Registrar Veículo", "P1 - Heloiza", "Consulta histórico de cotações", "Cadeia de Lojas", "P4 - Sofia", "P5 - Vitor"], key="navegacao_radio")
 
 st.sidebar.header("Acesso para colaboradores")
 # credentials = get_credentials()
@@ -573,9 +574,9 @@ if page == "Consulta histórico de cotações":
 
     
 # P3 - Samuel
-if page == "P3 - Samuel":
-    st.title("P3 - Samuel")
-    st.subheader("Testes")
+if page == "Cadeia de Lojas":
+    st.title("Cadeia de Lojas")
+    st.subheader("Consulta preço médio em Cadeias de Lojas")
 
     # Consulta Gráfica da Variação de Cotação Média Mensal
     st.header("Consulta Gráfica de Variação de Preço")
@@ -640,13 +641,19 @@ if page == "P3 - Samuel":
                     cursor.close()
                     conn.close()
 
+                    
                     st.success(f"Cadeia de loja '{chain_name}' cadastrada com sucesso!")
+                    time.sleep(1)
+                    st.rerun()
+                    
             except Exception as e:
                 # Reverter transações em caso de erro
                 conn.rollback()
                 st.error(f"Erro ao cadastrar a cadeia de loja: {str(e)}")
         else:
             st.warning("Preencha o nome da cadeia.")
+            
+            
 
 
     # Associação de loja a cadeia
