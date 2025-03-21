@@ -416,16 +416,21 @@ if page == "P3 - Samuel":
         else:
             st.warning("Selecione um período válido.")
 
-    # Cadastro de Cadeia de Loja
-    st.header("Cadastro de Cadeia de Loja")
-    chain_name = st.text_input("Nome da Cadeia de Loja")
-    
-    if st.button("Cadastrar Cadeia"):
-        if chain_name:
-            try:
-                conn = create_connection()
-                cursor = conn.cursor()
+ # Cadastro de Cadeia de Loja
+st.header("Cadastro de Cadeia de Loja")
+chain_name = st.text_input("Nome da Cadeia de Loja")
 
+if st.button("Cadastrar Cadeia"):
+    if chain_name:
+        try:
+            conn = create_connection()
+            cursor = conn.cursor()
+
+            # Verificar se a cadeia de loja já existe
+            cursor.execute("SELECT 1 FROM store_chains_table WHERE chain_name = %s", (chain_name,))
+            if cursor.fetchone():
+                st.warning("Cadeia já cadastrada!")
+            else:
                 # Buscar o maior id_store para gerar o próximo
                 cursor.execute("SELECT MAX(id_store) FROM stores_table")
                 max_id = cursor.fetchone()[0]
@@ -456,31 +461,34 @@ if page == "P3 - Samuel":
                 conn.close()
 
                 st.success(f"Cadeia de loja '{chain_name}' cadastrada com sucesso!")
-            except Exception as e:
-                # Reverter transações em caso de erro
-                conn.rollback()
-                st.error(f"Erro ao cadastrar a cadeia de loja: {str(e)}")
-        else:
-            st.warning("Preencha o nome da cadeia.")
-
-    # Associação de loja a cadeia
-    st.header("Associação de Loja a Cadeia")
-    
-    # Verifica se há lojas registradas em st.session_state
-    if 'lojas_registradas' in st.session_state:
-        loja_id = st.selectbox("Selecione a Loja", list(set([loja['nome'] for loja in st.session_state.lojas_registradas])) )  # Remover duplicatas
-        chain_to_associate = st.selectbox("Selecione a Cadeia", chains)
-
-        if st.button("Associar Loja à Cadeia"):
-            try:
-                # Busca o ID da loja a partir do nome
-                store_id = next(loja['id'] for loja in st.session_state.lojas_registradas if loja['nome'] == loja_id)
-                # Chama a função para associar loja à cadeia
-                associate_store_to_chain(store_id, chain_to_associate)
-            except Exception as e:
-                st.error(f"Erro ao associar loja à cadeia: {e}")
+        except Exception as e:
+            # Reverter transações em caso de erro
+            conn.rollback()
+            st.error(f"Erro ao cadastrar a cadeia de loja: {str(e)}")
     else:
-        st.warning("Não há lojas registradas para associar.")
+        st.warning("Preencha o nome da cadeia.")
+
+
+ # Associação de loja a cadeia
+st.header("Associação de Loja a Cadeia")
+    
+# Verifica se há lojas registradas em st.session_state
+if 'lojas_registradas' in st.session_state and st.session_state.lojas_registradas:
+    loja_id = st.selectbox("Selecione a Loja", list(set([loja['nome'] for loja in st.session_state.lojas_registradas])))  # Remover duplicatas
+    chain_to_associate = st.selectbox("Selecione a Cadeia", chains)
+
+    if st.button("Associar Loja à Cadeia"):
+        try:
+            # Busca o ID da loja a partir do nome
+            store_id = next(loja['id'] for loja in st.session_state.lojas_registradas if loja['nome'] == loja_id)
+            # Chama a função para associar loja à cadeia
+            associate_store_to_chain(store_id, chain_to_associate)
+            st.success(f"Loja associada à cadeia '{chain_to_associate}' com sucesso!")
+        except Exception as e:
+            st.error(f"Erro ao associar loja à cadeia: {e}")
+else:
+    st.warning("Não há lojas registradas para associar.")
+
     
 # P4 - Sofia
 if page == "P4 - Sofia":
