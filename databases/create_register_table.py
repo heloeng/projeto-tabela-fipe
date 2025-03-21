@@ -11,6 +11,7 @@ def create_register_table():
             id_user INTEGER NOT NULL,
             id_store INTEGER NOT NULL,
             id_vehicle INTEGER NOT NULL,
+            plate TEXT NOT NULL,
             year_man INTEGER NOT NULL,
             price NUMERIC(10, 2) NOT NULL,
             reg_date DATE NOT NULL DEFAULT CURRENT_DATE,
