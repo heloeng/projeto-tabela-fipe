@@ -14,7 +14,6 @@ from ipea import calcular_precos_ao_longo_tempo
 import pandas as pd
 import numpy as np
 from databases.create_saved_queries_table import save_daily_query, save_period_query, save_graph_query, get_last_saved_queries
-import pandas as pd
 import matplotlib.pyplot as plt
 
 # Configurações do Google OAuth
